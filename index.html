@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>HAERI | MOLD MANAGEMENT SYSTEM</title>
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="brand">
+      <img id="logoImg" class="logo-img" alt="" hidden>
+      <div class="logo-text" id="logoText"><span class="lt-mark">HAERI</span><span class="lt-sep">|</span><span class="lt-sub">MOLD MANAGEMENT SYSTEM</span></div>
+      <div class="brand-sub">(주)해리 금형 통합관리 시스템</div>
+    </div>
+    <div class="top-right">
+      <div class="save-state" id="saveState">연결 중…</div>
+      <button class="btn ghost sm" data-act="export" title="JSON 백업 파일 내려받기">⤓ 백업</button>
+      <div class="user"><span class="avatar" id="userAvatar">·</span><span id="userName"></span></div>
+      <button class="btn ghost sm" data-act="logout" title="로그아웃">로그아웃</button>
+    </div>
+  </header>
+  <aside class="sidebar">
+    <nav id="nav">
+      <a href="#/dashboard" data-nav="dashboard"><i>▦</i>대시보드</a>
+      <div id="navProject"></div>
+      <a href="#/settings" data-nav="settings"><i>⚙</i>설정 및 백업</a>
+    </nav>
+    <div class="side-foot">
+      <div>v2.0 · 클라우드</div>
+      <div class="muted">팀 공유 · 실시간 저장</div>
+    </div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+<input type="file" id="importInput" accept="application/json,.json" hidden>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.js" integrity="sha384-A97u3Qnt9GZHURO9YJZRe7VQgGUeFzcv6I1oIGnUTxQrCxnpQMwR0/G8F2zt9abZ" crossorigin="anonymous"></script>
+<script src="assets/config.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
