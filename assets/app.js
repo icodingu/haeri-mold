@@ -863,9 +863,16 @@ function calendarHTML() {
 function refreshCal() { const el = $('#calBox'); if (el) el.innerHTML = calendarHTML(); }
 function dayModal(date) {
   const W = '일월화수목금토'[new Date(date + 'T00:00').getDay()];
+  let editing = null;   // 수정 중인 일정 id
+  const pal = (cur, attr) => `<div class="cpick">${CAL_PALETTE.map(([c, n]) => `<button type="button" class="csw sm${c === cur ? ' on' : ''}" ${attr}="${c}" style="--c:${c}" title="${n}" aria-label="${n}"></button>`).join('')}<label class="ccustom" title="다른 색 직접 고르기"><input type="color" data-ecc value="${esc(cur)}" aria-label="다른 색 직접 고르기">직접</label></div>`;
+  const editHTML = x => `<div class="sitem sedit" data-sid="${esc(x.id)}"><div class="form" style="width:100%">
+      <label>관련 금형<select data-ef="dwgNo"><option value="">(선택 안 함)</option>${DB.projects.map(p => `<option value="${esc(p.dwgNo)}" ${p.dwgNo === x.dwgNo ? 'selected' : ''}>${esc(dispName(p))}</option>`).join('')}</select></label>
+      <label>일정 내용 *<input type="text" data-ef="title" value="${esc(x.dwgNo && x.title.startsWith(x.dwgNo + ' ') ? x.title.slice(x.dwgNo.length + 1) : x.title)}" autocomplete="off"></label>
+      <div class="full"><div class="clabel">색</div>${pal(schedColor(x), 'data-esw')}<input type="hidden" data-ef="color" value="${esc(schedColor(x))}"></div>
+      <div class="full" style="display:flex;gap:6px;justify-content:flex-end;align-items:center"><span class="hint err" data-eerr style="margin-right:auto"></span><button type="button" class="btn sm" data-scancel>취소</button><button type="button" class="btn sm pri" data-ssave="${esc(x.id)}">수정 저장</button></div></div></div>`;
   const listHTML = () => {
     const ev = DB.schedules.filter(x => x.date === date);
-    return ev.length ? ev.map(x => `<div class="sitem"><input type="color" class="scol" data-scol="${esc(x.id)}" value="${esc(schedColor(x))}" title="색 바꾸기" aria-label="일정 색 바꾸기"><div class="stx"><b>${esc(schedLabel(x))}</b>${x.dwgNo && getP(x.dwgNo) && getP(x.dwgNo).model ? `<span class="muted"> · ${esc(getP(x.dwgNo).model)}</span>` : ''}</div><button class="btn sm danger" data-sdel="${esc(x.id)}">삭제</button></div>`).join('')
+    return ev.length ? ev.map(x => x.id === editing ? editHTML(x) : `<div class="sitem"><input type="color" class="scol" data-scol="${esc(x.id)}" value="${esc(schedColor(x))}" title="색 바꾸기" aria-label="일정 색 바꾸기"><div class="stx"><b>${esc(schedLabel(x))}</b>${x.dwgNo && getP(x.dwgNo) && getP(x.dwgNo).model ? `<span class="muted"> · ${esc(getP(x.dwgNo).model)}</span>` : ''}</div><button class="btn sm" data-sedit="${esc(x.id)}">✎ 수정</button><button class="btn sm danger" data-sdel="${esc(x.id)}">삭제</button></div>`).join('')
       : '<div class="muted" style="padding:6px 0">등록된 일정이 없습니다.</div>';
   };
   const cur = UI.cur && getP(UI.cur) ? UI.cur : '';
@@ -875,7 +882,7 @@ function dayModal(date) {
       <label>관련 금형<select id="sd_p"><option value="">(선택 안 함)</option>${DB.projects.map(p => `<option value="${esc(p.dwgNo)}" ${p.dwgNo === cur ? 'selected' : ''}>${esc(dispName(p))}</option>`).join('')}</select></label>
       <label>일정 내용 *<input type="text" id="sd_t" placeholder="예: 가공, 시사출, 몰드베이스 입고" autocomplete="off"></label>
       <div class="full"><div class="clabel">색</div><div class="cpick" id="sd_c" role="radiogroup" aria-label="일정 색">${CAL_PALETTE.map(([c, n]) => `<button type="button" class="csw${c === UI.calColor ? ' on' : ''}" data-csw="${c}" style="--c:${c}" title="${n}" aria-label="${n}" role="radio" aria-checked="${c === UI.calColor}"></button>`).join('')}<label class="ccustom" title="다른 색 직접 고르기"><input type="color" id="sd_cc" value="${esc(UI.calColor)}" aria-label="다른 색 직접 고르기">직접</label></div></div>
-      <span class="hint full">금형을 고르면 달력에 ‘도번 + 내용’으로 표시됩니다 (예: HR26-0701 가공). 등록한 일정의 색은 위 목록의 동그라미를 눌러 바꿀 수 있습니다.</span>
+      <span class="hint full">금형을 고르면 달력에 ‘도번 + 내용’으로 표시됩니다 (예: HR26-0701 가공). 등록한 일정의 내용·금형·색은 위 목록의 ‘수정’으로 바꿀 수 있습니다.</span>
       <span class="hint err full" id="sd_err"></span></div>`, [
     { text: '닫기' },
     { text: '일정 추가', cls: 'pri', fn: r => {
@@ -896,21 +903,49 @@ function dayModal(date) {
     $('#sd_cc', root).value = c;
   };
   $('#sd_cc', root).addEventListener('input', e => setColor(e.target.value.toLowerCase()));
-  root.addEventListener('change', e => {
+  const box = root.querySelector('.mback');
+  const redraw = () => { $('#sd_list', root).innerHTML = listHTML(); refreshCal(); };
+  box.addEventListener('input', e => {
+    const cc = e.target.closest('[data-ecc]'); if (!cc) return;
+    const ed = cc.closest('.sedit'); const c = cc.value.toLowerCase();
+    ed.querySelector('[data-ef="color"]').value = c; ed.querySelectorAll('[data-esw]').forEach(s => s.classList.toggle('on', s.dataset.esw === c));
+  });
+  box.addEventListener('keydown', e => {
+    const ed = e.target.closest('.sedit'); if (!ed) return;
+    if (e.key === 'Enter' && !e.isComposing && e.target.matches('input[type=text]')) { e.preventDefault(); e.stopPropagation(); ed.querySelector('[data-ssave]').click(); }
+  }, true);
+  box.addEventListener('change', e => {
     const inp = e.target.closest('[data-scol]'); if (!inp) return;
     const x = DB.schedules.find(s => s.id === inp.dataset.scol); if (!x) return;
     const bk = snap(); x.color = inp.value.toLowerCase();
     if (!save()) { restore(bk); return; }
-    $('#sd_list', root).innerHTML = listHTML(); refreshCal();
+    redraw();
   });
-  root.addEventListener('click', async e => {
+  let deleting = false;
+  box.addEventListener('click', async e => {
     const sw = e.target.closest('[data-csw]'); if (sw) { setColor(sw.dataset.csw); return; }
-    const b = e.target.closest('[data-sdel]'); if (!b) return;
+    const esw = e.target.closest('[data-esw]');
+    if (esw) { const ed = esw.closest('.sedit'); ed.querySelector('[data-ef="color"]').value = esw.dataset.esw; ed.querySelector('[data-ecc]').value = esw.dataset.esw; ed.querySelectorAll('[data-esw]').forEach(s => s.classList.toggle('on', s === esw)); return; }
+    const be = e.target.closest('[data-sedit]'); if (be) { editing = be.dataset.sedit; redraw(); const t = root.querySelector('.sedit [data-ef="title"]'); if (t) { t.focus(); t.select(); } return; }
+    if (e.target.closest('[data-scancel]')) { editing = null; redraw(); return; }
+    const bs = e.target.closest('[data-ssave]');
+    if (bs) {
+      const x = DB.schedules.find(s => s.id === bs.dataset.ssave), ed = bs.closest('.sedit'); if (!x) { editing = null; return redraw(); }
+      const title = ed.querySelector('[data-ef="title"]').value.trim();
+      if (!title) { ed.querySelector('[data-eerr]').textContent = '일정 내용을 입력하세요.'; return; }
+      const bk = snap(); x.title = title; x.dwgNo = ed.querySelector('[data-ef="dwgNo"]').value; x.color = ed.querySelector('[data-ef="color"]').value;
+      if (!save()) { restore(bk); return; }
+      editing = null; redraw(); toast('일정을 수정했습니다'); return;
+    }
+    const b = e.target.closest('[data-sdel]'); if (!b || deleting) return;
     const x = DB.schedules.find(s => s.id === b.dataset.sdel); if (!x) return;
-    if (!(await confirmBox('일정 삭제', `<b>${esc(date)}</b> ‘${esc(schedLabel(x))}’ 일정을 삭제할까요?`, '삭제', true))) return;
+    deleting = true;
+    const ok = await confirmBox('일정 삭제', `<b>${esc(date)}</b> ‘${esc(schedLabel(x))}’ 일정을 삭제할까요?`, '삭제', true);
+    deleting = false; if (!ok) return;
     const bk = snap(); DB.schedules = DB.schedules.filter(s => s !== x);
     if (!save()) { restore(bk); return; }
-    $('#sd_list', root).innerHTML = listHTML(); refreshCal();
+    if (editing === x.id) editing = null;
+    redraw(); toast('일정을 삭제했습니다');
   });
 }
 
@@ -937,7 +972,8 @@ function viewDetail(p, tab) {
 }
 function tabOverview(p) {
   const c = calcCosts(p.costs);
-  const important = p.logs.filter(l => l.state === '미해결' || l.state === '진행 중' || l.category === '문제 발생');
+  const important = sortedLogs(p).filter(l => l.state === '미해결' || l.state === '진행 중' || (l.category === '문제 발생' && l.state !== '해결'));
+  const solved = sortedLogs(p).filter(l => l.state === '해결');
   const F = [['도번', p.dwgNo], ['모델명', p.model], ['금형 종류', p.moldType], ['캐비티 수', p.cavities], ['금형 재질', p.material], ['수지', p.resin],
     ['작업 시작일', p.startDate], ['작업 완료일', p.endDate], ['작업 상태', null], ['설계 담당자', p.designer], ['제작 담당 업체', p.maker], ['프로젝트 담당자', p.manager], ['프로젝트 폴더', p.folder]];
   return `<div class="grid2"><div>
@@ -949,7 +985,8 @@ function tabOverview(p) {
       <div class="kv"><div>확정 제작비</div><div class="money" style="color:var(--ac)">${won(c.confirmed)}</div><div>실제 지급액</div><div class="money">${won(c.paid)}</div><div>미지급 확정금액</div><div class="money">${won(c.unpaid)}</div><div>보류·미확정 견적</div><div class="money" style="color:var(--warn)">${won(c.pending)}</div></div>
       ${c.missing ? `<div class="note">금액 미입력 항목 ${c.missing}건</div>` : ''}</div>
     <div class="panel"><h3>주요 특이사항 <a href="#/project/${encodeURIComponent(p.dwgNo)}/history" style="font-size:12px;font-weight:500">전체 이력 ›</a></h3>
-      ${important.length ? important.map(l => `<div class="issue" data-go="#/project/${encodeURIComponent(p.dwgNo)}/history"><span class="badge ${LOG_BADGE[l.state]}">${esc(l.state)}</span><div><div class="it">${esc(l.title)}</div><div class="im">${esc(l.category)} · ${esc(l.vendor || '업체 미지정')} · ${esc(l.date || '날짜 미입력')}</div></div></div>`).join('') : '<div class="muted">미해결·문제 발생 기록 없음</div>'}</div>
+      ${important.length ? important.map(l => `<div class="issue" data-go="#/project/${encodeURIComponent(p.dwgNo)}/history"><span class="badge ${LOG_BADGE[l.state]}">${esc(l.state)}</span><div><div class="it">${esc(l.title)}</div><div class="im">${esc(l.category)} · ${esc(l.vendor || '업체 미지정')} · ${esc(l.date || '날짜 미입력')}</div></div></div>`).join('') : '<div class="muted">현재 해결 중인 문제 없음</div>'}
+      ${solved.length ? `<div class="issub">해결된 문제 이력 <span>${solved.length}건</span></div>${solved.map(l => `<div class="issue done" data-go="#/project/${encodeURIComponent(p.dwgNo)}/history"><span class="badge ${LOG_BADGE[l.state]}">해결</span><div><div class="it">${esc(l.title)}</div><div class="im">${esc(l.category)} · ${esc(l.vendor || '업체 미지정')} · ${esc(l.date || '날짜 미입력')}</div>${l.action ? `<div class="ia">조치: ${esc(l.action)}</div>` : ''}</div></div>`).join('')}` : ''}</div>
   </div></div>`;
 }
 function costRow(c) {

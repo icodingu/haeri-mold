@@ -239,3 +239,12 @@ select{cursor:pointer}
 .vtbl textarea{min-height:34px;resize:vertical;line-height:1.45;padding:6px 9px;font:inherit}
 .qcell{display:flex;gap:4px;align-items:center}
 .qfall{color:#e3e9f3;text-align:center;line-height:1.8;padding:24px}
+
+/* 해결된 문제 이력 · 일정 수정 */
+.issub{margin:12px 0 2px;padding-top:10px;border-top:1px dashed var(--line);font-size:12px;font-weight:700;color:var(--tx3)}
+.issub span{font-weight:500;margin-left:4px}
+.issue.done .it{color:var(--tx2)}
+.issue .ia{font-size:12px;color:var(--tx2);margin-top:3px;line-height:1.5}
+.sitem .stx{flex:1}
+.sedit{background:rgba(47,198,192,.05);border:1px solid var(--line2);border-radius:8px;padding:10px 12px;margin:6px 0}
+.csw.sm{width:22px;height:22px}
