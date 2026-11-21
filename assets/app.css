@@ -248,3 +248,26 @@ select{cursor:pointer}
 .sitem .stx{flex:1}
 .sedit{background:rgba(47,198,192,.05);border:1px solid var(--line2);border-radius:8px;padding:10px 12px;margin:6px 0}
 .csw.sm{width:22px;height:22px}
+
+/* 제작비·견적 (2026-11-21 단순화) */
+.totals.t3,#costTotals{grid-template-columns:repeat(3,minmax(0,1fr))}
+.tot .k span{margin-left:6px;font-size:10.5px;color:var(--tx3);opacity:.8}
+.totin{display:flex;align-items:baseline;gap:2px;margin-top:2px}
+.totin input{flex:1;min-width:0;background:transparent;border:1px solid transparent;border-radius:6px;padding:2px 6px;margin-left:-6px;font-size:18px;font-weight:700;color:var(--tx);font-variant-numeric:tabular-nums;font-family:inherit}
+.tot.main .totin input{color:var(--ac)}
+.totin input:hover{border-color:var(--line2)}.totin input:focus{outline:none;border-color:var(--ac);background:var(--bg)}
+.totin input::placeholder{font-size:14px;font-weight:500;color:var(--tx3)}
+.totin b{font-size:18px;font-weight:700;color:var(--tx)}.tot.main .totin b{color:var(--ac)}
+.totin input{margin-left:0}
+.qbtn{border-color:rgba(47,198,192,.45);color:var(--ac);background:var(--acbg)}
+.qbtn:hover{background:rgba(47,198,192,.2)}
+.qadd{border-style:dashed;color:var(--tx2)}
+.csum{display:grid;gap:8px}
+.cs{display:flex;justify-content:space-between;align-items:baseline;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg2)}
+.cs span{font-size:12.5px;color:var(--tx2)}.cs span em{font-style:normal;font-size:10.5px;color:var(--tx3);margin-left:4px}
+.cs b{font-size:16px;font-variant-numeric:tabular-nums}.cs b i{font-style:normal;font-size:12.5px;font-weight:500;color:var(--tx3)}
+.cs.main{border-color:rgba(47,198,192,.45)}.cs.main b{color:var(--ac)}
+
+/* 금형수리이력 */
+.rep-frame{height:calc(100vh - 160px);min-height:640px}
+.md h5{margin:14px 0 4px;font-size:14px;color:var(--ac)}

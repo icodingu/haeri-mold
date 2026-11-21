@@ -1,0 +1,2740 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>금형수리이력</title>
+<style>
+/* Layout: 3D viewer on the left drives the history timeline on the right; both read from one event list. */
+:root {
+  --bg: #eef3fa;
+  --surface: #ffffff;
+  --ink: #0f1d33;
+  --muted: #5a6b85;
+  --line: #cfdaeb;
+  --accent: #1f5fd1;
+  --accent-soft: #e2ebfb;
+  --viewer-bg: linear-gradient(180deg, #dfe8f6 0%, #c9d7ec 100%);
+  --t-design: #4a47d6;
+  --t-dim: #0d8a86;
+  --t-repair: #cc4430;
+  --t-inspect: #3c8a37;
+  --t-transfer: #8749cc;
+  --t-other: #a86f14;
+  --warn: #c2410c;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a1120;
+    --surface: #111a2c;
+    --ink: #e5ecf8;
+    --muted: #93a3bf;
+    --line: #233250;
+    --accent: #6198f7;
+    --accent-soft: #15284a;
+    --viewer-bg: linear-gradient(180deg, #14213a 0%, #0d1729 100%);
+    --t-design: #8f8cff;
+    --t-dim: #3fc7c1;
+    --t-repair: #f2785f;
+    --t-inspect: #79c56f;
+    --t-transfer: #b98af2;
+    --t-other: #e0a84a;
+    --warn: #fb923c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a1120;
+  --surface: #111a2c;
+  --ink: #e5ecf8;
+  --muted: #93a3bf;
+  --line: #233250;
+  --accent: #6198f7;
+  --accent-soft: #15284a;
+  --viewer-bg: linear-gradient(180deg, #14213a 0%, #0d1729 100%);
+  --t-design: #8f8cff;
+  --t-dim: #3fc7c1;
+  --t-repair: #f2785f;
+  --t-inspect: #79c56f;
+  --t-transfer: #b98af2;
+  --t-other: #e0a84a;
+  --warn: #fb923c;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.wrap { max-width: 1320px; margin: 0 auto; padding: 20px 20px 32px; display: grid; gap: 16px; }
+
+/* Header */
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.top h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+.top .sub { color: var(--muted); font-size: 13px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.field-inline { display: flex; flex-direction: column; gap: 2px; }
+.field-inline label { font-size: 11px; color: var(--muted); }
+select, input[type="text"], input[type="search"], input[type="number"], input[type="date"], textarea {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 10px;
+  min-height: 36px;
+}
+textarea { min-height: 64px; resize: vertical; width: 100%; }
+.btn {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 7px 14px;
+  min-height: 36px;
+  font-weight: 500;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.small { min-height: 30px; padding: 4px 10px; font-size: 13px; }
+.btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+/* Mold info + summary */
+.info {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px 20px;
+}
+.info div { display: flex; flex-direction: column; }
+.info dt { font-size: 11px; color: var(--muted); }
+.info dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--font-mono); }
+
+.summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.tile .k { font-size: 12px; color: var(--muted); }
+.tile .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.tile .s { font-size: 12px; color: var(--muted); }
+.tile.warn { border-top-color: var(--warn); }
+.tile.warn .v { color: var(--warn); }
+
+/* Main grid */
+.grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.panel-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+
+.viewer {
+  position: relative;
+  height: 500px;
+  background: var(--viewer-bg);
+  overflow: hidden;
+  touch-action: none;
+}
+.viewer canvas { display: block; width: 100%; height: 100%; }
+.viewer.pick { outline: 3px solid var(--accent); outline-offset: -3px; }
+.viewer .hint {
+  position: absolute; left: 12px; bottom: 10px;
+  font-size: 12px; color: var(--muted);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  padding: 4px 8px; border-radius: 6px;
+  pointer-events: none;
+}
+.viewer .pickbar {
+  position: absolute; left: 50%; top: 12px; transform: translateX(-50%);
+  background: var(--accent); color: #fff; font-weight: 600; font-size: 13px;
+  padding: 6px 12px; border-radius: 6px; display: none;
+}
+.viewer.pick .pickbar { display: block; }
+.viewer .fallback { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+.badges { position: absolute; inset: 0; pointer-events: none; }
+.badge {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  pointer-events: auto;
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 2px 8px 2px 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  display: flex; align-items: center; gap: 4px;
+  box-shadow: 0 1px 3px rgba(15, 29, 51, 0.15);
+}
+.badge .n { font-family: var(--font-mono); background: var(--accent); color: #fff; border-radius: 999px; padding: 0 6px; font-size: 11px; }
+.badge.repeat { border-color: var(--warn); }
+.badge.repeat .n { background: var(--warn); }
+.badge.sel { background: var(--accent); color: #fff; }
+.badge.sel .n { background: #fff; color: var(--accent); }
+
+.partlist { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 16px; border-top: 1px solid var(--line); }
+.chip {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.chip:hover { border-color: var(--accent); }
+.chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+.chip .cnt { font-family: var(--font-mono); color: var(--muted); font-size: 11px; }
+.chip.repeat .cnt { color: var(--warn); font-weight: 600; }
+
+/* Timeline */
+.filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.active-part { display: none; padding: 8px 16px; background: var(--accent-soft); border-bottom: 1px solid var(--line); font-size: 13px; align-items: center; justify-content: space-between; gap: 8px; }
+.active-part.show { display: flex; }
+.list { list-style: none; margin: 0; padding: 12px 16px 16px; display: grid; gap: 10px; max-height: 640px; overflow-y: auto; }
+.empty { color: var(--muted); padding: 24px 0; text-align: center; }
+.card {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--tc, var(--accent));
+  border-radius: 8px;
+  background: var(--surface);
+}
+.card.sel { border-color: var(--accent); border-left-color: var(--tc); box-shadow: 0 0 0 1px var(--accent); }
+.card-btn { all: unset; display: grid; gap: 4px; padding: 10px 12px; width: 100%; box-sizing: border-box; cursor: pointer; }
+.card-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 6px; }
+.card-top { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12px; color: var(--muted); }
+.tag { color: var(--tc); font-weight: 600; background: color-mix(in srgb, var(--tc) 12%, transparent); border-radius: 4px; padding: 1px 6px; }
+.card-title { font-weight: 600; font-size: 14px; }
+.card-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; color: var(--muted); align-items: center; }
+.cost { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 500; }
+.pill { border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 600; border: 1px solid currentColor; }
+.pill.done { color: var(--t-inspect); }
+.pill.in_progress { color: var(--accent); }
+.pill.requested { color: var(--warn); }
+.detail { display: none; padding: 0 12px 12px; font-size: 13px; }
+.card.open .detail { display: grid; gap: 8px; }
+.detail dl { margin: 0; display: grid; grid-template-columns: 92px 1fr; gap: 4px 10px; }
+.detail dt { color: var(--muted); }
+.detail dd { margin: 0; }
+.dims { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.dims th, .dims td { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: right; }
+.dims th:first-child, .dims td:first-child { text-align: left; }
+.dims th { color: var(--muted); font-weight: 500; }
+
+/* Form */
+form { display: grid; gap: 12px; padding: 14px 16px 16px; }
+form[hidden] { display: none; }
+.frow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.f { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.f label, .f .lab { font-size: 12px; color: var(--muted); font-weight: 500; }
+.f input, .f select { width: 100%; }
+.req::after { content: " *"; color: var(--warn); }
+fieldset { border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px 12px; margin: 0; display: grid; gap: 10px; }
+fieldset[hidden] { display: none; }
+legend { font-size: 12px; font-weight: 600; padding: 0 4px; color: var(--accent); }
+.part-pick { display: flex; gap: 6px; }
+.part-pick select { flex: 1; }
+.dimrow { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 30px; gap: 6px; align-items: center; }
+.dimrow input { min-width: 0; width: 100%; }
+.dimhead { font-size: 11px; color: var(--muted); }
+.iconbtn { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; height: 32px; }
+.form-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.err { color: var(--warn); font-size: 12px; min-height: 18px; }
+
+footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+  background: var(--ink); color: var(--bg); padding: 8px 16px; border-radius: 8px; font-size: 13px;
+  opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Help, work type, mold edit */
+.help-steps { margin: 0; padding: 14px 16px 16px 36px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px 24px; }
+.help-steps li { padding-left: 4px; }
+.help-steps li::marker { color: var(--accent); font-weight: 700; font-family: var(--font-mono); }
+.help-steps b { display: block; font-size: 14px; }
+.help-steps span { color: var(--muted); font-size: 13px; }
+.form-hint { font-size: 12px; color: var(--muted); background: var(--accent-soft); border-radius: 6px; padding: 6px 10px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; width: fit-content; }
+.seg label { display: flex; align-items: center; gap: 6px; padding: 6px 14px; cursor: pointer; font-size: 13px; }
+.seg label + label { border-left: 1px solid var(--line); }
+.seg input { accent-color: var(--accent); margin: 0; }
+.seg label:has(input:checked) { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.wb { border-radius: 4px; padding: 1px 6px; font-weight: 600; font-size: 11px; border: 1px solid currentColor; }
+.wb.out { color: var(--t-transfer); }
+.wb.in { color: var(--muted); }
+.fsep { width: 1px; background: var(--line); margin: 2px 4px; align-self: stretch; }
+.info .edit-cell { justify-content: center; align-items: flex-start; }
+.info input { min-height: 30px; padding: 4px 8px; width: 100%; font-weight: 500; }
+
+/* Injection cycle */
+.stagebar { position: absolute; left: 12px; top: 12px; margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px; max-width: calc(100% - 24px); pointer-events: none; }
+.stagebar li { font-size: 11.5px; padding: 3px 8px; border-radius: 4px; background: color-mix(in srgb, var(--surface) 82%, transparent); color: var(--muted); border: 1px solid var(--line); }
+.stagebar li.done { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.stagebar li.now { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+.prod-label { pointer-events: none; border-color: var(--t-other); display: none; }
+.gate-label { pointer-events: none; border-color: #ff7a1a; display: none; }
+.section-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.section-canvas[hidden] { display: none; }
+.viewer.sec .badges, .viewer.sec .prod-label, .viewer.sec .gate-label, .viewer.sec .fallback { display: none !important; }
+.viewseg { display: inline-flex; }
+.viewseg .btn { border-radius: 0; }
+.viewseg .btn:first-child { border-radius: 6px 0 0 6px; }
+.viewseg .btn:last-child { border-radius: 0 6px 6px 0; margin-left: -1px; }
+
+/* Mold list */
+.filters-inline { display: flex; flex-wrap: wrap; gap: 6px; }
+.mtable { min-width: 860px; }
+.mtable th:first-child, .mtable td:first-child { padding-left: 16px; }
+.mtable tbody tr { cursor: pointer; }
+.mtable tbody tr:hover { background: var(--accent-soft); }
+.mtable tbody tr.cur { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.mtable td { font-size: 13px; }
+.orient { border-radius: 4px; padding: 1px 6px; font-size: 11.5px; font-weight: 600; border: 1px solid currentColor; }
+.orient.h { color: var(--accent); }
+.orient.v { color: var(--t-transfer); }
+.mach-chips { display: flex; flex-wrap: wrap; gap: 3px; }
+.mach { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; color: var(--muted); }
+.mach.cur { border-color: var(--accent); background: var(--accent); color: #fff; }
+.info dd .mach-chips { margin-top: 2px; }
+.info .wide { grid-column: span 2; }
+
+/* Full guide, mold form, vendor table */
+.guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px 24px; padding: 14px 16px 16px; }
+.guide h3 { margin: 0 0 6px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.guide .gn { font-family: var(--font-mono); background: var(--accent); color: #fff; border-radius: 4px; padding: 0 6px; font-size: 12px; }
+.guide ol { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.guide ol b { color: var(--ink); font-weight: 600; }
+.mold-form { padding: 14px 16px 16px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+.mold-form[hidden] { display: none; }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.vtable { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.vtable th { text-align: left; font-size: 11px; color: var(--muted); font-weight: 500; padding: 3px 6px; border-bottom: 1px solid var(--line); }
+.vtable td { padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.vtable .r { text-align: right; }
+.vtitle { font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 4px; }
+
+/* Product view */
+.prod-info { position: absolute; left: 12px; top: 12px; background: color-mix(in srgb, var(--surface) 90%, transparent); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; display: grid; gap: 4px; max-width: calc(100% - 300px); }
+.prod-info .pi-name { font-weight: 700; font-size: 14px; }
+.prod-info .pi-sub { font-size: 12px; color: var(--muted); }
+.prod-info .pi-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.prod-legend { position: absolute; right: 12px; top: 12px; width: 256px; background: color-mix(in srgb, var(--surface) 94%, transparent); border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 6px; }
+.pl-title { font-size: 12px; font-weight: 700; color: var(--muted); }
+.pl-item { all: unset; cursor: pointer; display: grid; gap: 1px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.pl-item:hover { border-color: var(--accent); }
+.pl-item:focus-visible { outline: 2px solid var(--accent); }
+.pl-item.on { background: var(--accent); border-color: var(--accent); }
+.pl-item.on .pl-f, .pl-item.on .pl-p { color: #fff; }
+.pl-f { font-weight: 600; font-size: 13px; color: var(--ink); }
+.pl-p { font-size: 12px; color: var(--muted); }
+.pl-note { font-size: 11.5px; color: var(--muted); }
+.viewer.sec .badges { display: none !important; }
+
+/* Version */
+.ver { font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 1px 6px; vertical-align: middle; }
+.changelog summary { cursor: pointer; padding: 12px 16px; font-weight: 600; font-size: 14px; }
+.changelog[open] summary { border-bottom: 1px solid var(--line); }
+.changelog .dtable { margin: 8px 0 12px; }
+.changelog .dtable th:first-child, .changelog .dtable td:first-child { padding-left: 16px; width: 64px; }
+.changelog .dtable td:nth-child(2) { width: 110px; }
+
+/* Attachments */
+.att-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.att-list:empty { display: none; }
+.att-item { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font-size: 12px; }
+.att-item img { width: 40px; height: 30px; object-fit: cover; border-radius: 3px; background: var(--accent-soft); }
+.att-item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.att-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.att-thumb { all: unset; cursor: pointer; display: grid; gap: 2px; width: 120px; font-size: 11px; color: var(--muted); }
+.att-thumb img { width: 120px; height: 84px; object-fit: contain; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.att-thumb:focus-visible { outline: 2px solid var(--accent); border-radius: 6px; }
+.att-file { display: grid; place-items: center; width: 120px; height: 84px; border: 1px dashed var(--line); border-radius: 6px; font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
+.detail-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.lightbox { position: fixed; inset: 0; background: rgba(8, 15, 30, 0.72); display: grid; place-items: center; z-index: 30; padding: 16px; }
+.lightbox[hidden] { display: none; }
+.lb-inner { background: var(--surface); border-radius: 10px; padding: 12px; max-width: min(1000px, 100%); max-height: 100%; display: grid; gap: 8px; }
+.lb-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-weight: 600; }
+.lb-inner img { max-width: 100%; max-height: calc(100vh - 120px); object-fit: contain; background: #fff; border-radius: 6px; }
+
+/* Decision panel */
+.decide-body { display: grid; grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.6fr); gap: 0; }
+.age { padding: 14px 16px; border-right: 1px solid var(--line); display: grid; gap: 8px; align-content: start; }
+.age .big { display: flex; align-items: baseline; gap: 8px; }
+.age .pct { font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.age .line { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.gauge { position: relative; height: 10px; border-radius: 999px; background: var(--accent-soft); overflow: visible; }
+.gauge .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--vc, var(--accent)); }
+.gauge .mark { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--muted); opacity: .6; }
+.gauge-scale { position: relative; height: 14px; font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.gauge-scale span { position: absolute; transform: translateX(-50%); }
+.verdict { display: inline-block; border-radius: 4px; padding: 1px 8px; font-size: 12px; font-weight: 600; color: var(--vc); background: color-mix(in srgb, var(--vc) 14%, transparent); white-space: nowrap; }
+.v-ok { --vc: var(--t-inspect); }
+.v-warn { --vc: var(--t-other); }
+.v-bad { --vc: var(--t-repair); }
+.parts-decide { padding: 14px 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.conclusion { font-weight: 600; font-size: 14px; border-left: 3px solid var(--accent); padding: 4px 0 4px 10px; }
+.dtable { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.dtable th { text-align: left; font-size: 11px; color: var(--muted); font-weight: 500; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.dtable td { padding: 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.dtable td.r, .dtable th.r { text-align: right; }
+.ratio { display: flex; align-items: center; gap: 6px; min-width: 120px; }
+.ratio .bar { flex: 1; height: 6px; background: var(--accent-soft); border-radius: 999px; position: relative; }
+.ratio .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--vc, var(--accent)); }
+.ratio .bar b { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--muted); }
+.rule { font-size: 11.5px; color: var(--muted); }
+.table-wrap { overflow-x: auto; }
+
+/* Tour */
+.tour {
+  position: fixed; right: 20px; bottom: 20px; width: min(360px, calc(100% - 32px));
+  background: var(--surface); border: 1px solid var(--accent); border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(15, 29, 51, 0.22); padding: 14px 16px; display: grid; gap: 8px; z-index: 20;
+}
+.tour[hidden] { display: none; }
+.tour .step { font-size: 12px; color: var(--accent); font-weight: 600; font-family: var(--font-mono); }
+.tour h3 { margin: 0; font-size: 16px; }
+.tour p { margin: 0; color: var(--ink); }
+.tour .dots { display: flex; gap: 4px; }
+.tour .dots i { width: 18px; height: 4px; border-radius: 2px; background: var(--line); }
+.tour .dots i.on { background: var(--accent); }
+.tour .acts { display: flex; justify-content: space-between; gap: 8px; }
+.spot { outline: 3px solid var(--accent) !important; outline-offset: 3px; border-radius: 10px; }
+
+@media (max-width: 960px) {
+  .decide-body { grid-template-columns: 1fr; }
+  .age { border-right: 0; border-bottom: 1px solid var(--line); }
+  .grid { grid-template-columns: 1fr; }
+  .summary { grid-template-columns: repeat(2, 1fr); }
+  .viewer { height: 380px; }
+  .list { max-height: none; }
+}
+@media (max-width: 480px) {
+  .wrap { padding: 16px; }
+  .frow { grid-template-columns: 1fr; }
+  .tile .v { font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast { transition: none; }
+}
+
+/* ===== 금형 대시보드 색·글꼴에 맞춤 (남색 바탕 + 청록 강조) ===== */
+:root[data-theme="dark"] {
+  --bg: #0d1420; --surface: #151f30; --surface2: #1a2538; --ink: #e3e9f3; --muted: #a3b0c5; --dim: #6f7d95;
+  --line: #25324a; --line2: #2f3e5a; --accent: #2fc6c0; --accent-soft: rgba(47,198,192,.12);
+  --viewer-bg: radial-gradient(120% 95% at 50% 0%, #1d2d47 0%, #131d2e 58%, #0d1420 100%);
+  --t-design: #a48cf0; --t-dim: #3b8beb; --t-repair: #ef6b6b; --t-inspect: #3ccf8e; --t-transfer: #c38cf0; --t-other: #f0b543; --warn: #f0b543;
+  --font-body: "Pretendard", "Pretendard Variable", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Consolas", "D2Coding", monospace;
+}
+body { -webkit-font-smoothing: antialiased; }
+.wrap { max-width: none; padding: 16px 18px 28px; gap: 14px; }
+.panel, .info, .summary > *, .tour { box-shadow: 0 6px 24px rgba(0,0,0,.22); }
+.panel { border-radius: 10px; }
+.panel-head h2 { font-size: 15px; letter-spacing: -.01em; }
+select, input[type="text"], input[type="search"], input[type="number"], input[type="date"], textarea { background: var(--bg); border-color: var(--line2); border-radius: 7px; }
+select:focus, input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,198,192,.15); }
+select option { background: var(--surface); }
+.btn { background: var(--surface2); border-color: var(--line2); border-radius: 7px; transition: .15s; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.primary, .stagebar li.now, .mach.cur, .badge.sel, .guide .gn, .badge .n { color: #06201f; font-weight: 700; }
+.btn.primary:hover { color: #06201f; filter: brightness(1.1); }
+.badge.sel .n { background: #06201f; color: var(--accent); }
+.info { background: linear-gradient(180deg, var(--surface2), var(--surface)); position: relative; overflow: hidden; }
+.info::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+.viewer { border: 1px solid var(--line); }
+.att-thumb img, .lb-inner img { background: #fff; }
+::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-thumb { background: #2a3850; border-radius: 6px; border: 2px solid var(--bg); } ::-webkit-scrollbar-track { background: transparent; }
+/* 대시보드 안에서 열 때: 제목·변경 기록·초기화 버튼은 숨김 (제목은 대시보드가 보여 줌) */
+html.embed .top > div:first-child, html.embed .changelog, html.embed #reset-data { display: none; }
+html.embed .top { justify-content: flex-start; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>금형 이력 관리 <span class="ver" title="현재 버전">v1.7</span></h1>
+      <div class="sub">해커톤 데모 · 2026-11-21 · 단순화한 금형 형상과 예시 데이터</div>
+    </div>
+    <div class="controls">
+      <div class="field-inline">
+        <label for="mold">금형</label>
+        <select id="mold"></select>
+      </div>
+      <div class="field-inline">
+        <label for="q">검색</label>
+        <input id="q" type="search" placeholder="제목, 사유, 업체로 찾기">
+      </div>
+      <button class="btn" id="help-btn" type="button" aria-expanded="false" aria-controls="help">입력 방법</button>
+      <button class="btn" id="tour-btn" type="button">데모 시작</button>
+      <button class="btn primary" id="add-btn" type="button">이력 등록</button>
+    </div>
+  </header>
+
+  <section class="panel help" id="help" hidden aria-label="입력 방법">
+    <div class="panel-head">
+      <h2>입력 방법 (전체)</h2>
+      <button class="btn small" type="button" id="help-close">닫기</button>
+    </div>
+    <div class="guide">
+      <section>
+        <h3><span class="gn">A</span> 금형 등록·수정</h3>
+        <ol>
+          <li><b>새 금형:</b> 금형 목록의 '금형 등록'을 누릅니다. 금형번호와 품명은 필수이고, 금형번호는 ERP와 같은 형식으로 씁니다.</li>
+          <li><b>설비:</b> 수평·수직을 고릅니다. 수평은 톤수(450·220·170·110톤)를 고르면 같은 톤수의 설비만 현재 설비로 고를 수 있습니다. 수직은 VE01~15 중 전용 설비를 고릅니다.</li>
+          <li><b>원재료:</b> 원재료 이름(예: PP GF30)을 쓰고 GF30% 함유와 Non GF 중 하나를 고릅니다. 노후도 기준 수명(50만 타, 100만 타)이 이걸로 정해집니다.</li>
+          <li><b>나머지:</b> 제작 업체, 제작일, 캐비티, 누적 쇼트, 도면 Rev, 탕도, 슬라이드를 채웁니다.</li>
+          <li><b>고칠 때:</b> 금형 정보 칸의 '금형 정보 수정'에서 제작 업체, 제작일, 원재료, 누적 쇼트, 도면 Rev, 현재 설비를 바꿉니다.</li>
+        </ol>
+      </section>
+      <section>
+        <h3><span class="gn">B</span> 이력 등록 (공통)</h3>
+        <ol>
+          <li>목록에서 금형을 고르고 '이력 등록'을 누릅니다.</li>
+          <li><b>필수:</b> 유형, 일자, 제목. 기타 유형이면 유형 이름도 씁니다(예: 세척, 부품 교체).</li>
+          <li><b>3D 부위:</b> '3D에서 찍기'를 누르고 고친 부위를 누르거나, 목록에서 고릅니다.</li>
+          <li><b>작업 구분:</b> 사내에서 했으면 내주(작업 부서), 업체에 맡겼으면 외주(업체명 필수)를 고릅니다. 한 번 쓴 업체명은 다음부터 목록에서 고를 수 있습니다.</li>
+          <li><b>비용:</b> 금액(원)과 부담처(사내·업체·고객)를 적습니다. 비용이 없으면 비워 둡니다.</li>
+          <li><b>상태:</b> 요청, 진행 중, 완료 중 하나를 고릅니다.</li>
+        </ol>
+      </section>
+      <section>
+        <h3><span class="gn">C</span> 유형별 추가 칸</h3>
+        <ol>
+          <li><b>치수수정:</b> 측정 부위마다 변경 전, 변경 후, 공차(mm)를 한 줄씩 넣습니다.</li>
+          <li><b>수리:</b> 고장 증상, 원인, 조치 내용, 수리 기간.</li>
+          <li><b>설계변경:</b> 변경 요청 번호(ECO), 요청 부서, 변경 전·후 Rev.</li>
+          <li><b>점검:</b> 결과(양호·주의·불량)와 누적 쇼트. 누적 쇼트를 넣으면 노후도가 갱신됩니다.</li>
+          <li><b>이관:</b> 보낸 설비는 자동으로 채워지고, 받는 설비는 호환 설비 중에서 고릅니다. 저장하면 현재 설비가 바뀝니다. 수직 금형은 옮길 수 없습니다.</li>
+        </ol>
+      </section>
+      <section>
+        <h3><span class="gn">D</span> 도면·사진, 반복 입력</h3>
+        <ol>
+          <li><b>첨부:</b> 첨부 종류(도면, 수정 전·후 사진, 성적서·견적서)와 도면 Rev를 고르고 파일을 고릅니다. 이미지와 PDF, 한 파일 1.5MB 이하이며 사진은 자동으로 줄여 저장합니다.</li>
+          <li><b>같은 일이 또 생기면:</b> 예전 카드를 펼쳐 '이 이력 복사해서 새로 등록'을 누릅니다. 날짜, 치수, 비용만 고치면 됩니다.</li>
+          <li><b>저장 후:</b> 타임라인 맨 위에 쌓이고, 요약·판단·금형 목록의 상태가 다시 계산됩니다.</li>
+          <li><b>저장 위치:</b> 대시보드 안에서 열면 클라우드에 자동 저장되고 팀원과 함께 봅니다. 이 파일만 따로 열면 지금 쓰는 브라우저에만 저장됩니다.</li>
+        </ol>
+      </section>
+    </div>
+  </section>
+
+  <section class="panel" id="molds-panel" aria-label="금형 목록">
+    <div class="panel-head">
+      <h2>금형 목록 <span class="sub" id="mold-count"></span></h2>
+      <div class="controls">
+        <div class="filters-inline" id="mold-filters" role="group" aria-label="금형 필터"></div>
+        <button class="btn small primary" type="button" id="mold-add-btn">금형 등록</button>
+      </div>
+    </div>
+    <form id="mold-form" class="mold-form" hidden novalidate>
+      <div class="form-hint">* 표시는 꼭 채워야 하는 칸입니다. 금형번호는 ERP와 같은 형식으로 쓰세요.</div>
+      <div class="mgrid">
+        <div class="f"><label for="m-id" class="req">금형번호</label><input id="m-id" type="text" placeholder="예: M-2026-031"></div>
+        <div class="f"><label for="m-name" class="req">품명</label><input id="m-name" type="text"></div>
+        <div class="f"><label for="m-no">품번</label><input id="m-no" type="text"></div>
+        <div class="f"><label for="m-cav">캐비티</label><input id="m-cav" type="number" min="1" step="1" value="1"></div>
+        <div class="f"><span class="lab req" id="m-orient-lab">구분</span>
+          <div class="seg" role="radiogroup" aria-labelledby="m-orient-lab">
+            <label><input type="radio" name="m-orient" id="m-orient-h" value="horizontal" checked> 수평</label>
+            <label><input type="radio" name="m-orient" id="m-orient-v" value="vertical"> 수직</label>
+          </div>
+        </div>
+        <div class="f" id="m-ton-wrap"><label for="m-ton" class="req">톤수</label>
+          <select id="m-ton"><option value="450">450톤</option><option value="220" selected>220톤</option><option value="170">170톤</option><option value="110">110톤</option></select>
+        </div>
+        <div class="f"><label for="m-machine" class="req">현재 설비</label><select id="m-machine"></select></div>
+        <div class="f"><label for="m-resin">원재료 이름</label><input id="m-resin" type="text" placeholder="예: PP GF30"></div>
+        <div class="f"><label for="m-material" class="req">원재료 구분</label>
+          <select id="m-material"><option value="gf30">GF30% 함유 · 기준 50만 타</option><option value="nongf">Non GF · 기준 100만 타</option></select>
+        </div>
+        <div class="f"><label for="m-maker">제작 업체</label><input id="m-maker" type="text" list="vendor-list"></div>
+        <div class="f"><label for="m-made">제작일</label><input id="m-made" type="date"></div>
+        <div class="f"><label for="m-shots">누적 쇼트</label><input id="m-shots" type="number" min="0" step="1" value="0"></div>
+        <div class="f"><label for="m-rev">도면 Rev</label><input id="m-rev" type="text" placeholder="예: A"></div>
+        <div class="f"><label for="m-runner">탕도</label><input id="m-runner" type="text" placeholder="예: 핫러너 4점 게이트"></div>
+        <div class="f"><label for="m-slide">슬라이드</label><input id="m-slide" type="text" placeholder="예: 1개 (측면 언더컷)"></div>
+      </div>
+      <div class="err" id="m-err" role="alert"></div>
+      <div class="form-actions">
+        <button class="btn" type="button" id="m-cancel">취소</button>
+        <button class="btn primary" type="submit">금형 저장</button>
+      </div>
+    </form>
+    <div class="table-wrap"><table class="dtable mtable" id="mold-table"></table></div>
+  </section>
+
+  <dl class="info" id="info"></dl>
+
+  <section class="summary" id="summary" aria-label="이력 요약"></section>
+
+  <section class="panel" id="decide" aria-label="판단">
+    <div class="panel-head">
+      <h2>판단: 계속 수리할까, 다시 만들까</h2>
+      <span class="sub">노후도와 부위별 누적 수리비 기준</span>
+    </div>
+    <div class="decide-body">
+      <div class="age" id="age"></div>
+      <div class="parts-decide" id="parts-decide"></div>
+    </div>
+  </section>
+
+  <main class="grid">
+    <section class="panel" aria-label="3D 형상">
+      <div class="panel-head">
+        <h2>3D 형상</h2>
+        <div class="controls">
+          <span class="viewseg" role="group" aria-label="보기 방식">
+            <button class="btn small on" id="view-3d" type="button" aria-pressed="true">3D</button>
+            <button class="btn small" id="view-sec" type="button" aria-pressed="false">단면</button>
+            <button class="btn small" id="view-prod" type="button" aria-pressed="false">제품</button>
+          </span>
+          <button class="btn small primary" id="play-cycle" type="button">사출 사이클 재생</button>
+          <button class="btn small" id="toggle-open" type="button">형 닫기</button>
+          <button class="btn small" id="reset-view" type="button">시점 초기화</button>
+        </div>
+      </div>
+      <div class="viewer" id="viewer">
+        <div class="badges" id="badges"></div>
+        <div class="pickbar">이력을 연결할 부위를 누르세요</div>
+        <ol class="stagebar" id="stagebar" aria-label="사출 사이클 단계">
+          <li>형 닫힘</li><li>사출 충전</li><li>보압·냉각</li><li>형 열림</li><li>이젝터 전진</li><li>제품 취출</li>
+        </ol>
+        <div class="badge prod-label" id="prod-label">취출 제품 · 2캐비티</div>
+        <div class="badge gate-label" id="gate-label">게이트</div>
+        <canvas id="prod-canvas" class="section-canvas" hidden role="img" aria-label="제품 3D: 부위를 누르면 그 부위를 만드는 금형 부위가 선택됩니다"></canvas>
+        <div class="prod-info" id="prod-info" hidden></div>
+        <div class="prod-legend" id="prod-legend" hidden></div>
+        <canvas id="section" class="section-canvas" hidden role="img" aria-label="사출 단면: 노즐에서 스프루, 러너, 게이트를 지나 캐비티가 채워지고 제품이 취출되는 과정"></canvas>
+        <div class="hint">드래그 회전 · 휠 확대 · 부위를 누르면 그 부위 이력만 보기</div>
+      </div>
+      <div class="partlist" id="partlist" aria-label="부위 목록"></div>
+    </section>
+
+    <section class="panel" aria-label="이력">
+      <div id="timeline-view">
+        <div class="panel-head">
+          <h2 id="list-title">이력 타임라인</h2>
+          <span class="sub" id="list-count"></span>
+        </div>
+        <div class="filters" id="filters" aria-label="유형 필터"></div>
+        <div class="active-part" id="active-part">
+          <span id="active-part-text"></span>
+          <button class="btn small" id="clear-part" type="button">전체 부위 보기</button>
+        </div>
+        <ul class="list" id="list"></ul>
+      </div>
+
+      <form id="form" hidden novalidate>
+        <div class="panel-head" style="margin: -14px -16px 0; padding: 12px 16px;">
+          <h2>이력 등록</h2>
+          <button class="btn small" type="button" id="cancel-top">닫기</button>
+        </div>
+
+        <div class="form-hint">* 표시는 꼭 채워야 하는 칸입니다. 처음이면 위쪽 '입력 방법'을 먼저 보세요.</div>
+
+        <div class="frow">
+          <div class="f">
+            <label for="f-type" class="req">유형</label>
+            <select id="f-type">
+              <option value="dimension_fix">치수수정</option>
+              <option value="repair">수리</option>
+              <option value="design_change">설계변경</option>
+              <option value="inspection">점검</option>
+              <option value="transfer">이관</option>
+              <option value="other">기타 (직접 입력)</option>
+            </select>
+          </div>
+          <div class="f">
+            <label for="f-date" class="req">일자</label>
+            <input id="f-date" type="date">
+          </div>
+        </div>
+
+        <div class="f" id="type-label-wrap" hidden>
+          <label for="f-type-label" class="req">유형 이름</label>
+          <input id="f-type-label" type="text" list="label-list" placeholder="예: 세척, 부품 교체, 시사출">
+          <datalist id="label-list"></datalist>
+        </div>
+
+        <div class="f">
+          <label for="f-title" class="req">제목</label>
+          <input id="f-title" type="text" placeholder="예: 코어 인서트 #2 리브 높이 수정">
+        </div>
+
+        <div class="f">
+          <span class="lab">3D 부위</span>
+          <div class="part-pick">
+            <select id="f-part" aria-label="3D 부위"></select>
+            <button class="btn small" type="button" id="pick-btn">3D에서 찍기</button>
+          </div>
+        </div>
+
+        <div class="f">
+          <label for="f-reason">사유</label>
+          <input id="f-reason" type="text" placeholder="왜 했는지">
+        </div>
+
+        <fieldset id="fs-dimension_fix">
+          <legend>치수 변경</legend>
+          <div class="dimrow dimhead"><span>측정 부위</span><span>변경 전 (mm)</span><span>변경 후 (mm)</span><span>공차 ± (mm)</span><span></span></div>
+          <div id="dim-rows" style="display:grid; gap:6px;"></div>
+          <div><button class="btn small" type="button" id="add-dim">측정 부위 추가</button></div>
+        </fieldset>
+
+        <fieldset id="fs-repair" hidden>
+          <legend>수리 내용</legend>
+          <div class="frow">
+            <div class="f"><label for="x-symptom">고장 증상</label><input id="x-symptom" type="text"></div>
+            <div class="f"><label for="x-cause">원인</label><input id="x-cause" type="text"></div>
+          </div>
+          <div class="frow">
+            <div class="f"><label for="x-action">조치 내용</label><input id="x-action" type="text"></div>
+            <div class="f"><label for="x-period">수리 기간</label><input id="x-period" type="text" placeholder="예: 3일"></div>
+          </div>
+        </fieldset>
+
+        <fieldset id="fs-design_change" hidden>
+          <legend>설계변경</legend>
+          <div class="frow">
+            <div class="f"><label for="x-eco">변경 요청 번호</label><input id="x-eco" type="text" placeholder="예: ECO-2026-040"></div>
+            <div class="f"><label for="x-dept">요청 부서</label><input id="x-dept" type="text"></div>
+          </div>
+          <div class="frow">
+            <div class="f"><label for="x-rev-before">변경 전 Rev</label><input id="x-rev-before" type="text"></div>
+            <div class="f"><label for="x-rev-after">변경 후 Rev</label><input id="x-rev-after" type="text"></div>
+          </div>
+        </fieldset>
+
+        <fieldset id="fs-inspection" hidden>
+          <legend>점검</legend>
+          <div class="frow">
+            <div class="f"><label for="x-result">결과</label>
+              <select id="x-result"><option>양호</option><option>주의</option><option>불량</option></select>
+            </div>
+            <div class="f"><label for="x-shots">누적 쇼트 수</label><input id="x-shots" type="number" min="0" step="1"></div>
+          </div>
+        </fieldset>
+
+        <fieldset id="fs-transfer" hidden>
+          <legend>이관</legend>
+          <div class="frow">
+            <div class="f"><label for="x-from">보낸 설비</label><input id="x-from" type="text" readonly></div>
+            <div class="f"><label for="x-to">받는 설비 (호환 설비만)</label><select id="x-to"></select></div>
+          </div>
+        </fieldset>
+
+        <fieldset id="fs-attach">
+          <legend>도면·사진 첨부</legend>
+          <div class="frow">
+            <div class="f"><label for="a-kind">첨부 종류</label>
+              <select id="a-kind">
+                <option value="drawing">도면</option>
+                <option value="photo_before">수정 전 사진</option>
+                <option value="photo_after">수정 후 사진</option>
+                <option value="report">측정 성적서·견적서</option>
+              </select>
+            </div>
+            <div class="f"><label for="a-rev">도면 Rev</label><input id="a-rev" type="text" placeholder="예: D"></div>
+          </div>
+          <div class="f">
+            <label for="a-file">파일 고르기 (이미지 또는 PDF, 한 파일 1.5MB 이하)</label>
+            <input id="a-file" type="file" accept="image/*,.pdf,application/pdf" multiple>
+          </div>
+          <ul class="att-list" id="a-list"></ul>
+        </fieldset>
+
+        <div class="f">
+          <label for="f-detail">상세 내용</label>
+          <textarea id="f-detail"></textarea>
+        </div>
+
+        <div class="f">
+          <span class="lab req" id="wb-label">작업 구분</span>
+          <div class="seg" role="radiogroup" aria-labelledby="wb-label">
+            <label><input type="radio" name="f-wb" id="f-wb-internal" value="internal" checked> 내주 (사내)</label>
+            <label><input type="radio" name="f-wb" id="f-wb-outsourced" value="outsourced"> 외주</label>
+          </div>
+        </div>
+
+        <div class="frow">
+          <div class="f"><label for="f-vendor" id="vendor-label">사내 작업 부서</label><input id="f-vendor" type="text" placeholder="예: 공무팀" list="vendor-list"><datalist id="vendor-list"></datalist></div>
+          <div class="f"><label for="f-owner">담당자</label><input id="f-owner" type="text"></div>
+        </div>
+
+        <div class="frow">
+          <div class="f"><label for="f-cost">비용 (원)</label><input id="f-cost" type="number" min="0" step="1000" placeholder="없으면 비움"></div>
+          <div class="f"><label for="f-payer">비용 부담</label>
+            <select id="f-payer"><option value="internal">사내</option><option value="vendor">업체</option><option value="customer">고객</option></select>
+          </div>
+        </div>
+
+        <div class="f">
+          <label for="f-status">상태</label>
+          <select id="f-status"><option value="done">완료</option><option value="in_progress">진행 중</option><option value="requested">요청</option></select>
+        </div>
+
+        <div class="err" id="form-err" role="alert"></div>
+        <div class="form-actions">
+          <button class="btn" type="button" id="cancel-btn">취소</button>
+          <button class="btn primary" type="submit">저장</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <details class="panel changelog">
+    <summary>변경 기록 (현재 v1.7)</summary>
+    <table class="dtable">
+      <thead><tr><th>버전</th><th>날짜</th><th>바뀐 내용</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">v1.7</td><td class="mono">2026-11-21</td><td>제품 3D 보기(금형별 생산 제품, 회전·윗면/아랫면, 캐비티 #1·#2). 제품 부위 ↔ 금형 부위 연동: 외관면 ← 고정측 캐비티, 리브·보스 ← 코어 인서트, 측면 클립 ← 슬라이드 코어, 게이트 자국 ← 핫러너, 핀 자국 ← 이젝터. 제품 부위를 누르면 해당 금형 부위 이력으로 걸러짐</td></tr>
+        <tr><td class="mono">v1.6</td><td class="mono">2026-11-21</td><td>금형 등록 기능(설비·톤수·호환 설비 자동 제한), 외주 업체명 목록에서 고르기, 금형별 외주 업체 현황(건수·비용·최근), 전체 입력 방법 안내(A 금형, B 이력 공통, C 유형별, D 첨부·반복 입력)</td></tr>
+        <tr><td class="mono">v1.5</td><td class="mono">2026-11-21</td><td>금형 목록(7벌 예시): 현재 설비, 수평·수직, 톤수, 호환 설비, 노후도, 상태. 설비 39대 기준(수평 HO01~24: 450·220·170·110톤, 수직 VE01~15 전용). 이관 등록 시 호환 설비만 선택, 저장하면 현재 설비 갱신</td></tr>
+        <tr><td class="mono">v1.4</td><td class="mono">2026-11-21</td><td>금형 설계 고도화: 다점 핫러너(매니폴드 + 게이트 4점, 각 게이트에서 수지 확산), 슬라이드 코어(앵귤러 핀·로킹 블록·측면 언더컷), 노즐 터치. 단면 보기 추가(노즐 → 핫러너 → 게이트 → 캐비티 → 취출). 부위에 핫러너 추가</td></tr>
+        <tr><td class="mono">v1.3</td><td class="mono">2026-11-21</td><td>사출 사이클 재생: 형 닫힘 → 수지 충전(제품 형상대로, 2캐비티) → 보압·냉각 → 형 열림 → 이젝터 전진 → 제품 취출, 취출 제품 표시</td></tr>
+        <tr><td class="mono">v1.2</td><td class="mono">2026-11-21</td><td>입력 방법 안내, 내주·외주 구분과 외주 업체명, 금형 제작 업체·제작일과 금형 정보 수정, 이력별 도면·사진 첨부, 이력 복사 등록</td></tr>
+        <tr><td class="mono">v1.1</td><td class="mono">2026-11-21</td><td>판단 패널(노후도: GF30% 50만 타, Non GF 100만 타 기준, 수리 vs 재제작 판단), 5단계 데모 안내</td></tr>
+        <tr><td class="mono">v1.0</td><td class="mono">2026-11-21</td><td>첫 데모: 3D 금형 형상, 이력 타임라인, 유형별 등록 폼, 3D 부위 연결, 수리비용, 기타 유형</td></tr>
+      </tbody>
+    </table>
+  </details>
+
+  <footer>
+    <span id="foot-note">예시 데이터입니다. 등록한 이력은 지금 보고 있는 브라우저에만 저장됩니다.</span>
+    <button class="btn small" id="reset-data" type="button">예시 데이터로 되돌리기</button>
+  </footer>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="첨부 미리보기">
+  <div class="lb-inner">
+    <div class="lb-head"><span id="lb-title"></span><button class="btn small" type="button" id="lb-close">닫기</button></div>
+    <img id="lb-img" alt="">
+  </div>
+</div>
+<aside class="tour" id="tour" hidden aria-live="polite" aria-label="데모 안내">
+  <div class="step" id="tour-step"></div>
+  <div class="dots" id="tour-dots"></div>
+  <h3 id="tour-title"></h3>
+  <p id="tour-body"></p>
+  <div class="acts">
+    <button class="btn small" type="button" id="tour-end">끝내기</button>
+    <span style="display:flex; gap:6px;">
+      <button class="btn small" type="button" id="tour-prev">이전</button>
+      <button class="btn small primary" type="button" id="tour-next">다음</button>
+    </span>
+  </div>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Reference data ---------- */
+  const PARTS = [
+    { id: "fixed_plate", name: "고정측 형판" },
+    { id: "moving_plate", name: "가동측 형판" },
+    { id: "core_insert_01", name: "코어 인서트 #1" },
+    { id: "core_insert_02", name: "코어 인서트 #2" },
+    { id: "slide_core", name: "슬라이드 코어" },
+    { id: "sprue_gate", name: "스프루·게이트부" },
+    { id: "ejector", name: "이젝터 핀" },
+    { id: "guide_pin", name: "가이드 핀" },
+    { id: "cooling", name: "냉각 라인" },
+    { id: "hot_runner", name: "핫러너 (매니폴드·노즐)" }
+  ];
+  const PART_NAME = Object.fromEntries(PARTS.map(p => [p.id, p.name]));
+
+  const TYPES = [
+    { id: "design_change", name: "설계변경", color: "--t-design" },
+    { id: "dimension_fix", name: "치수수정", color: "--t-dim" },
+    { id: "repair", name: "수리", color: "--t-repair" },
+    { id: "inspection", name: "점검", color: "--t-inspect" },
+    { id: "transfer", name: "이관", color: "--t-transfer" },
+    { id: "other", name: "기타", color: "--t-other" }
+  ];
+  const TYPE = Object.fromEntries(TYPES.map(t => [t.id, t]));
+  const STATUS = { done: "완료", in_progress: "진행 중", requested: "요청" };
+  const PAYER = { internal: "사내", vendor: "업체", customer: "고객" };
+  const EXTRA_LABEL = {
+    symptom: "고장 증상", cause: "원인", action: "조치 내용", period: "수리 기간",
+    eco: "변경 요청", dept: "요청 부서", rev_before: "변경 전 Rev", rev_after: "변경 후 Rev",
+    result: "점검 결과", shots: "누적 쇼트", from: "보낸 곳", to: "받는 곳"
+  };
+  const REPEAT_TYPES = ["dimension_fix", "repair"];
+  // Machines: 24 horizontal (same tonnage can swap molds), 15 vertical (dedicated, no moves)
+  const MACHINES = (() => {
+    const list = [];
+    const ton = n => n <= 2 ? 450 : n <= 16 ? 220 : n <= 18 ? 170 : 110;
+    for (let n = 1; n <= 24; n++) list.push({ id: "HO" + String(n).padStart(2, "0"), orient: "horizontal", ton: ton(n) });
+    for (let n = 1; n <= 15; n++) list.push({ id: "VE" + String(n).padStart(2, "0"), orient: "vertical", ton: null });
+    return list;
+  })();
+  const ORIENT = { horizontal: "수평", vertical: "수직" };
+  function machineOf(id) { return MACHINES.find(x => x.id === id); }
+  function compatibleMachines(m) {
+    if (m.orient === "vertical") return m.machine ? [m.machine] : [];
+    return MACHINES.filter(x => x.orient === "horizontal" && x.ton === m.tonnage).map(x => x.id);
+  }
+  function rangeText(ids) {
+    if (!ids.length) return "-";
+    const out = [];
+    let start = ids.at(0), prev = ids.at(0);
+    const num = id => Number(id.slice(2));
+    ids.slice(1).concat([null]).forEach(id => {
+      if (id && id.slice(0, 2) === prev.slice(0, 2) && num(id) === num(prev) + 1) { prev = id; return; }
+      out.push(start === prev ? start : start + "~" + prev);
+      start = prev = id;
+    });
+    return out.join(", ");
+  }
+  const LIFE = {
+    gf30: { label: "GF30% 함유", shots: 500000 },
+    nongf: { label: "Non GF", shots: 1000000 }
+  };
+  // Demo thresholds (shown on the page as assumptions)
+  const AGE_WARN = 70, AGE_BAD = 90;
+  const RATIO_WARN = 30, RATIO_BAD = 50, COUNT_WARN = 2, COUNT_BAD = 3;
+
+  const SEED = {
+    molds: [
+      { mold_id: "M-DEMO-01", shape: { w: 3, d: 3, h: 0.5 }, part_name: "도어 트림 커버 (예시)", part_no: "DT-1001", cavity: 2, tonnage: 220, orient: "horizontal", machine: "HO07", rev: "D", shots: 388000, maker: "예시금형(주)", made_on: "2024-03-15",
+        resin: "PP GF30", material: "gf30",
+        runner: "핫러너 4점 게이트", slide: "1개 (측면 언더컷)",
+        remake: { core_insert_01: 4000000, core_insert_02: 4000000, slide_core: 3000000, sprue_gate: 800000, ejector: 600000, cooling: 1000000, hot_runner: 6000000 } },
+      { mold_id: "M-DEMO-02", shape: { w: 3.4, d: 2.4, h: 0.6 }, part_name: "콘솔 박스 커버 (예시)", part_no: "CB-2040", cavity: 1, tonnage: 170, orient: "horizontal", machine: "HO17", rev: "B", shots: 128000, maker: "예시정밀", made_on: "2025-01-20",
+        resin: "ABS", material: "nongf",
+        runner: "핫러너 4점 게이트", slide: "1개 (측면 언더컷)",
+        remake: { core_insert_01: 3500000, core_insert_02: 3500000, slide_core: 2500000, sprue_gate: 700000, ejector: 500000, cooling: 900000, hot_runner: 5500000 } }
+      ,{ mold_id: "M-DEMO-03", shape: { w: 4.2, d: 2.2, h: 0.45 }, part_name: "크래시패드 로어 (예시)", part_no: "CP-3100", cavity: 1, tonnage: 450, orient: "horizontal", machine: "HO01", rev: "C", shots: 462000, maker: "예시금형(주)", made_on: "2023-06-10",
+        resin: "PP GF30", material: "gf30", runner: "핫러너 4점 게이트", slide: "1개 (측면 언더컷)",
+        remake: { core_insert_01: 6000000, core_insert_02: 6000000, slide_core: 4000000, sprue_gate: 900000, ejector: 700000, cooling: 1200000, hot_runner: 8000000 } }
+      ,{ mold_id: "M-DEMO-04", shape: { w: 2.2, d: 3.6, h: 0.35 }, part_name: "필러 트림 (예시)", part_no: "PT-4210", cavity: 2, tonnage: 110, orient: "horizontal", machine: "HO21", rev: "A", shots: 210000, maker: "예시정밀", made_on: "2025-04-02",
+        resin: "ABS", material: "nongf", runner: "핫러너 4점 게이트", slide: "1개 (측면 언더컷)",
+        remake: { core_insert_01: 2500000, core_insert_02: 2500000, slide_core: 1800000, sprue_gate: 500000, ejector: 400000, cooling: 700000, hot_runner: 4500000 } }
+      ,{ mold_id: "M-DEMO-05", shape: { w: 2.4, d: 2.4, h: 0.7 }, part_name: "인서트 브래킷 (예시)", part_no: "IB-5030", cavity: 2, tonnage: null, orient: "vertical", machine: "VE03", rev: "B", shots: 455000, maker: "예시금형(주)", made_on: "2022-11-15",
+        resin: "PA66 GF30", material: "gf30", runner: "핫러너 4점 게이트", slide: "1개 (측면 언더컷)",
+        remake: { core_insert_01: 3000000, core_insert_02: 3000000, slide_core: 2000000, sprue_gate: 600000, ejector: 500000, cooling: 800000, hot_runner: 5000000 } }
+      ,{ mold_id: "M-DEMO-06", shape: { w: 2, d: 2.8, h: 0.8 }, part_name: "커넥터 하우징 (예시)", part_no: "CH-6015", cavity: 4, tonnage: null, orient: "vertical", machine: "VE07", rev: "A", shots: 180000, maker: "예시정밀", made_on: "2025-08-20",
+        resin: "PBT", material: "nongf", runner: "핫러너 4점 게이트", slide: "1개 (측면 언더컷)",
+        remake: { core_insert_01: 2800000, core_insert_02: 2800000, slide_core: 1900000, sprue_gate: 500000, ejector: 450000, cooling: 700000, hot_runner: 4800000 } }
+      ,{ mold_id: "M-DEMO-07", shape: { w: 3.6, d: 2.6, h: 0.55 }, part_name: "글러브 박스 (예시)", part_no: "GB-7120", cavity: 1, tonnage: 220, orient: "horizontal", machine: "HO12", rev: "B", shots: 96000, maker: "예시금형(주)", made_on: "2026-01-12",
+        resin: "PP", material: "nongf", runner: "핫러너 4점 게이트", slide: "1개 (측면 언더컷)",
+        remake: { core_insert_01: 4200000, core_insert_02: 4200000, slide_core: 3000000, sprue_gate: 800000, ejector: 600000, cooling: 1000000, hot_runner: 6000000 } }
+    ],
+    events: [
+      { event_id: "EV-0012", mold_id: "M-DEMO-01", type: "repair", date: "2026-11-05", title: "핫러너 3번 노즐 히터 단선 교체", reason: "3번 게이트 쪽 미성형", detail: "노즐 히터·열전대 교체 후 4점 온도 편차 확인", owner: "금형 담당", vendor: "예시핫러너", work_by: "outsourced", cost: 850000, cost_payer: "internal", part_id: "hot_runner", status: "done",
+        extra: { symptom: "3번 게이트 미성형", cause: "노즐 히터 단선", action: "히터·열전대 교체", period: "1일" } },
+      { event_id: "EV-0011", mold_id: "M-DEMO-01", type: "dimension_fix", date: "2026-11-12", title: "코어 인서트 #2 리브 높이 수정", reason: "리브 높이 공차 상한 초과", detail: "리브 B 상단 0.12 mm 연삭 후 시사출 확인", owner: "금형 담당", vendor: "사내 공무", cost: 450000, cost_payer: "internal", part_id: "core_insert_02", status: "done",
+        dimensions: [{ point_name: "리브 높이 B", before: 4.62, after: 4.50, tolerance: 0.05 }], extra: {} },
+      { event_id: "EV-0010", mold_id: "M-DEMO-01", type: "other", type_label: "세척", date: "2026-10-28", title: "냉각 라인 스케일 세척", reason: "냉각수 유량 저하", detail: "고정측·가동측 냉각 회로 전체 세척", owner: "금형 담당", vendor: "예시세척", cost: 180000, cost_payer: "internal", part_id: "cooling", status: "done", extra: {} },
+      { event_id: "EV-0009", mold_id: "M-DEMO-01", type: "repair", date: "2026-10-02", title: "슬라이드 코어 마모 수리", reason: "제품 측면 버 발생", detail: "습동면 육성 용접 후 재가공", owner: "사출 운영", vendor: "예시금형(주)", cost: 1200000, cost_payer: "vendor", part_id: "slide_core", status: "done",
+        extra: { symptom: "측면 버", cause: "습동면 마모", action: "육성 용접 후 재가공", period: "4일" } },
+      { event_id: "EV-0008", mold_id: "M-DEMO-01", type: "design_change", date: "2026-09-15", title: "체결 보스 위치 변경", reason: "고객 설계변경 요청", detail: "보스 위치 3 mm 이동, 인서트 #2 재제작", owner: "금형 담당", vendor: "예시금형(주)", cost: 2800000, cost_payer: "customer", part_id: "core_insert_02", status: "done",
+        extra: { eco: "ECO-2026-031", dept: "고객 설계", rev_before: "C", rev_after: "D" } },
+      { event_id: "EV-0007", mold_id: "M-DEMO-01", type: "inspection", date: "2026-08-20", title: "정기 점검 (30만 쇼트)", reason: "정기 점검 주기 도래", detail: "가이드 핀 마모 관찰 필요", owner: "금형 담당", vendor: "사내 공무", cost: null, cost_payer: "internal", part_id: "moving_plate", status: "done",
+        extra: { result: "주의", shots: 300000 } },
+      { event_id: "EV-0006", mold_id: "M-DEMO-01", type: "dimension_fix", date: "2026-07-08", title: "코어 인서트 #2 리브 두께 수정", reason: "제품 두께 공차 밖", detail: "", owner: "금형 담당", vendor: "사내 공무", cost: 380000, cost_payer: "internal", part_id: "core_insert_02", status: "done",
+        dimensions: [{ point_name: "A부 두께", before: 2.10, after: 2.00, tolerance: 0.05 }], extra: {} },
+      { event_id: "EV-0005", mold_id: "M-DEMO-01", type: "repair", date: "2026-05-22", title: "이젝터 핀 2본 파손 교체", reason: "취출 불량", detail: "", owner: "사출 운영", vendor: "사내 공무", cost: 260000, cost_payer: "internal", part_id: "ejector", status: "done",
+        extra: { symptom: "제품 미취출", cause: "핀 파손", action: "핀 2본 교체", period: "1일" } },
+      { event_id: "EV-0004", mold_id: "M-DEMO-01", type: "dimension_fix", date: "2026-03-10", title: "게이트 직경 확대", reason: "미성형 발생", detail: "", owner: "금형 담당", vendor: "예시금형(주)", cost: 300000, cost_payer: "internal", part_id: "sprue_gate", status: "done",
+        dimensions: [{ point_name: "게이트 직경", before: 1.20, after: 1.50, tolerance: 0.02 }], extra: {} },
+      { event_id: "EV-0003", mold_id: "M-DEMO-01", type: "transfer", date: "2026-01-15", title: "HO05에서 HO07로 이관 (같은 220톤)", reason: "부하율 조정", detail: "", owner: "사출 운영", vendor: "", cost: null, cost_payer: "internal", part_id: null, status: "done",
+        extra: { from: "HO05", to: "HO07" } },
+      { event_id: "EV-0002", mold_id: "M-DEMO-01", type: "other", type_label: "시사출", date: "2025-11-30", title: "Rev C 적용 후 시사출", reason: "설계변경 반영 확인", detail: "", owner: "사출 운영", vendor: "", cost: 150000, cost_payer: "internal", part_id: null, status: "done", extra: {} },
+      { event_id: "EV-0001", mold_id: "M-DEMO-01", type: "repair", date: "2025-06-12", title: "슬라이드 코어 걸림 수리", reason: "형개 시 슬라이드 걸림", detail: "", owner: "사출 운영", vendor: "예시금형(주)", cost: 650000, cost_payer: "vendor", part_id: "slide_core", status: "done",
+        extra: { symptom: "슬라이드 걸림", cause: "앵귤러 핀 변형", action: "앵귤러 핀 교체", period: "2일" } },
+
+      { event_id: "EV-0301", mold_id: "M-DEMO-03", type: "repair", date: "2026-09-28", title: "슬라이드 코어 습동면 수리", reason: "측면 긁힘", detail: "", owner: "금형 담당", vendor: "예시금형(주)", work_by: "outsourced", cost: 1500000, cost_payer: "internal", part_id: "slide_core", status: "done",
+        extra: { symptom: "측면 긁힘", cause: "습동면 마모", action: "재가공", period: "3일" } },
+      { event_id: "EV-0501", mold_id: "M-DEMO-05", type: "dimension_fix", date: "2026-10-14", title: "코어 인서트 #1 구멍 위치 수정", reason: "인서트 너트 위치 편차", detail: "", owner: "금형 담당", vendor: "사내 공무", work_by: "internal", cost: 350000, cost_payer: "internal", part_id: "core_insert_01", status: "done",
+        dimensions: [{ point_name: "구멍 위치 X", before: 12.18, after: 12.05, tolerance: 0.05 }], extra: {} },
+      { event_id: "EV-0502", mold_id: "M-DEMO-05", type: "dimension_fix", date: "2026-04-03", title: "코어 인서트 #1 구멍 직경 수정", reason: "인서트 압입 불량", detail: "", owner: "금형 담당", vendor: "사내 공무", work_by: "internal", cost: 280000, cost_payer: "internal", part_id: "core_insert_01", status: "done",
+        dimensions: [{ point_name: "구멍 직경", before: 5.92, after: 6.00, tolerance: 0.03 }], extra: {} },
+      { event_id: "EV-0103", mold_id: "M-DEMO-02", type: "repair", date: "2026-10-18", title: "냉각 니플 누수 수리", reason: "형판 누수", detail: "", owner: "금형 담당", vendor: "사내 공무", cost: 90000, cost_payer: "internal", part_id: "cooling", status: "in_progress",
+        extra: { symptom: "누수", cause: "니플 체결 불량", action: "니플 교체", period: "" } },
+      { event_id: "EV-0102", mold_id: "M-DEMO-02", type: "dimension_fix", date: "2026-06-03", title: "코어 인서트 #1 외곽 치수 수정", reason: "조립 간섭", detail: "", owner: "금형 담당", vendor: "예시금형(주)", cost: 520000, cost_payer: "internal", part_id: "core_insert_01", status: "done",
+        dimensions: [{ point_name: "외곽 폭", before: 120.30, after: 120.10, tolerance: 0.1 }, { point_name: "외곽 길이", before: 84.25, after: 84.10, tolerance: 0.1 }], extra: {} },
+      { event_id: "EV-0101", mold_id: "M-DEMO-02", type: "inspection", date: "2026-02-11", title: "정기 점검 (10만 쇼트)", reason: "정기 점검 주기 도래", detail: "", owner: "금형 담당", vendor: "사내 공무", cost: null, cost_payer: "internal", part_id: "moving_plate", status: "done",
+        extra: { result: "양호", shots: 100000 } }
+    ],
+    labels: ["세척", "시사출", "부품 교체", "보관 위치 변경"]
+  };
+
+  // Example drawing for the demo (simple line drawing, not a real part)
+  (function addSampleDrawing() {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" font-family="sans-serif" font-size="14">
+<rect width="640" height="420" fill="#fff"/>
+<rect x="12" y="12" width="616" height="396" fill="none" stroke="#1f3b6e" stroke-width="2"/>
+<rect x="120" y="110" width="300" height="150" fill="none" stroke="#1f3b6e" stroke-width="2"/>
+<rect x="150" y="140" width="240" height="40" fill="none" stroke="#1f3b6e" stroke-dasharray="6 4"/>
+<line x1="420" y1="185" x2="470" y2="185" stroke="#1f3b6e" stroke-width="2"/>
+<circle cx="480" cy="185" r="10" fill="none" stroke="#1f3b6e" stroke-width="2"/>
+<line x1="120" y1="290" x2="420" y2="290" stroke="#c2410c"/><text x="245" y="310" fill="#c2410c">120.00 ±0.05</text>
+<line x1="90" y1="110" x2="90" y2="260" stroke="#c2410c"/><text x="40" y="190" fill="#c2410c">60.00</text>
+<text x="150" y="132" fill="#1f3b6e">습동면 (육성 후 재가공)</text>
+<rect x="400" y="340" width="216" height="56" fill="none" stroke="#1f3b6e"/>
+<text x="410" y="362" fill="#1f3b6e">슬라이드 코어 · Rev D</text>
+<text x="410" y="384" fill="#5a6b85">예시 도면 · M-DEMO-01</text>
+</svg>`;
+    const ev = SEED.events.find(e => e.event_id === "EV-0009");
+    ev.attachments = [{ file_type: "drawing", rev: "D", name: "슬라이드코어_RevD.svg", mime: "image/svg+xml", size: svg.length,
+      data: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg) }];
+  })();
+  const ATT_KIND = { drawing: "도면", photo_before: "수정 전 사진", photo_after: "수정 후 사진", report: "성적서·견적서" };
+  const MAX_FILE = 1.5 * 1024 * 1024;
+
+  /* ---------- State ---------- */
+  const STORE_KEY = "mold-history-demo-v2";
+  // 대시보드 안에서 열리면 데이터는 대시보드(클라우드)에 저장, 따로 열면 이 브라우저에 저장
+  const EMBED = window.parent !== window;
+  let lastSent = "";
+  let data = EMBED ? normalize(clone(SEED)) : loadData();
+  const state = {
+    moldId: data.molds[0].mold_id,
+    types: new Set(TYPES.map(t => t.id)),
+    q: "",
+    partFilter: null,
+    selectedEvent: null,
+    highlightPart: null,
+    pickMode: false,
+    formOpen: false,
+    workBy: "all",
+    moldFilter: "all",
+    editingInfo: false
+  };
+  const WORK_BY = { internal: "내주", outsourced: "외주" };
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  // Fill fields added after the first version, so older saved data keeps working.
+  function normalize(d) {
+    d.molds.forEach(m => { if (!m.products) m.products = [{ part_no: m.part_no, part_name: m.part_name }]; });
+    SEED.molds.forEach(sm => { if (!d.molds.some(m => m.mold_id === sm.mold_id)) d.molds.push(clone(sm)); });
+    SEED.events.forEach(se => { if (!d.events.some(e => e.event_id === se.event_id)) d.events.push(clone(se)); });
+    d.events.forEach(e => {
+      if (!e.work_by) e.work_by = (!e.vendor || /^사내/.test(e.vendor)) ? "internal" : "outsourced";
+      if (!e.attachments) {
+        const s = SEED.events.find(x => x.event_id === e.event_id);
+        e.attachments = s && s.attachments ? clone(s.attachments) : [];
+      }
+    });
+    d.molds.forEach(m => {
+      const seed = SEED.molds.find(s => s.mold_id === m.mold_id);
+      if (seed) {
+        if (!m.made_on) m.made_on = seed.made_on;
+        if (!m.runner) m.runner = seed.runner;
+        if (!m.orient) { m.orient = seed.orient; m.machine = seed.machine; }
+        if (!m.shape) m.shape = seed.shape;
+        if (!m.slide) m.slide = seed.slide;
+        m.remake = Object.assign({}, seed.remake, m.remake || {});
+        if (!m.maker || m.maker === "예시금형") m.maker = seed.maker;
+      }
+    });
+    return d;
+  }
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d && Array.isArray(d.events) && Array.isArray(d.molds)) return normalize(d);
+      }
+    } catch (e) { /* storage unavailable */ }
+    return normalize(clone(SEED));
+  }
+  function saveData() {
+    if (EMBED) {
+      const j = JSON.stringify(data);
+      if (j !== lastSent) { lastSent = j; parent.postMessage({ type: "hist-save", data: data }, location.origin); }
+      return true;
+    }
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); return true; } catch (e) { return false; }
+  }
+
+  /* ---------- Helpers ---------- */
+  const $ = id => document.getElementById(id);
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  function won(n) { return (n == null || n === "") ? "-" : Number(n).toLocaleString("ko-KR") + "원"; }
+  function wonShort(n) {
+    if (!n) return "0원";
+    if (n >= 10000) {
+      const man = n / 10000;
+      return (man >= 100 ? Math.round(man).toLocaleString("ko-KR") : man.toLocaleString("ko-KR", { maximumFractionDigits: 1 })) + "만원";
+    }
+    return n.toLocaleString("ko-KR") + "원";
+  }
+  function typeName(ev) { return ev.type === "other" && ev.type_label ? ev.type_label : TYPE[ev.type].name; }
+  function eventsOf(id) { return data.events.filter(e => e.mold_id === id); }
+  function moldEvents() {
+    return data.events.filter(e => e.mold_id === state.moldId).sort((a, b) => b.date.localeCompare(a.date) || b.event_id.localeCompare(a.event_id));
+  }
+  function partStats(events) {
+    const s = {};
+    events.forEach(e => {
+      if (!e.part_id) return;
+      s[e.part_id] = s[e.part_id] || { total: 0, fixes: 0 };
+      s[e.part_id].total++;
+      if (REPEAT_TYPES.includes(e.type)) s[e.part_id].fixes++;
+    });
+    return s;
+  }
+  function todayISO() {
+    const d = new Date();
+    const p = n => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+  }
+  let toastTimer = null;
+  function toast(msg) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+  }
+
+  /* ---------- Rendering ---------- */
+  function renderMoldSelect() {
+    $("mold").innerHTML = data.molds.map(m => `<option value="${esc(m.mold_id)}">${esc(m.mold_id)} · ${esc(m.part_name)}</option>`).join("");
+    $("mold").value = state.moldId;
+  }
+
+  function renderInfo() {
+    const m = data.molds.find(x => x.mold_id === state.moldId);
+    if (state.editingInfo) {
+      const inp = (id, label, val, type) => `<div><dt><label for="${id}">${label}</label></dt><dd><input id="${id}" type="${type || "text"}" value="${esc(val == null ? "" : val)}"></dd></div>`;
+      $("info").innerHTML = [
+        `<div><dt>금형번호</dt><dd class="mono">${esc(m.mold_id)}</dd></div>`,
+        inp("e-maker", "제작 업체", m.maker),
+        inp("e-made", "제작일", m.made_on, "date"),
+        inp("e-resin", "원재료 이름", m.resin),
+        inp("e-shots", "누적 쇼트", m.shots, "number"),
+        inp("e-rev", "현재 도면 Rev", m.rev),
+        `<div><dt><label for="e-machine">현재 설비</label></dt><dd><select id="e-machine">${compatibleMachines(m).map(id => `<option${id === m.machine ? " selected" : ""}>${id}</option>`).join("")}</select></dd></div>`,
+        `<div class="edit-cell" style="flex-direction:row; gap:6px; align-items:flex-end;"><button class="btn small primary" type="button" id="info-save">저장</button><button class="btn small" type="button" id="info-cancel">취소</button></div>`
+      ].join("");
+      $("e-maker").focus();
+      $("info-cancel").addEventListener("click", () => { state.editingInfo = false; renderInfo(); });
+      $("info-save").addEventListener("click", () => {
+        m.maker = $("e-maker").value.trim();
+        m.made_on = $("e-made").value;
+        m.resin = $("e-resin").value.trim();
+        const s = Number($("e-shots").value);
+        if (!isNaN(s) && s >= 0) m.shots = s;
+        m.rev = $("e-rev").value.trim();
+        m.machine = $("e-machine").value || m.machine;
+        saveData();
+        state.editingInfo = false;
+        renderAll();
+        toast("금형 정보를 저장했습니다");
+      });
+      return;
+    }
+    const rows = [
+      ["금형번호", `<span class="mono">${esc(m.mold_id)}</span>`],
+      ["품명", esc(m.part_name)],
+      ["생산 제품", (m.products && m.products.length ? m.products : [{ part_no: m.part_no, part_name: m.part_name }]).map(p => `<button type="button" class="chip" data-prodview="1">${esc(p.part_no)} 제품 3D</button>`).join(" ")],
+      ["제작 업체", esc(m.maker || "-")],
+      ["제작일", esc(m.made_on || "-")],
+      ["캐비티", m.cavity + "개"],
+      ["설비", `${esc(m.machine || "-")} · <span class="orient ${m.orient === "vertical" ? "v" : "h"}">${ORIENT[m.orient] || "-"}</span>${m.tonnage ? " · " + m.tonnage + "톤" : ""}`],
+      ["원재료", esc(m.resin || "-") + " · " + (LIFE[m.material] || LIFE.gf30).label],
+      ["탕도", esc(m.runner || "-")],
+      ["슬라이드", esc(m.slide || "-")],
+      ["현재 도면", "Rev " + esc(m.rev)],
+      ["누적 쇼트", Number(m.shots).toLocaleString("ko-KR")]
+    ];
+    const comp = compatibleMachines(m);
+    const compHTML = m.orient === "vertical"
+      ? `<div class="wide"><dt>호환 설비</dt><dd>${esc(m.machine)} 전용 (수직, 이동 불가)</dd></div>`
+      : `<div class="wide"><dt>호환 설비 · 같은 ${m.tonnage}톤 수평기 ${comp.length}대</dt><dd><span class="mach-chips">${comp.map(id => `<span class="mach ${id === m.machine ? "cur" : ""}">${id}</span>`).join("")}</span></dd></div>`;
+    $("info").innerHTML = rows.map(r => `<div><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join("") + compHTML +
+      `<div class="edit-cell"><button class="btn small" type="button" id="info-edit">금형 정보 수정</button></div>`;
+    $("info-edit").addEventListener("click", () => { state.editingInfo = true; renderInfo(); });
+    $("info").querySelectorAll("[data-prodview]").forEach(b => b.addEventListener("click", () => { setMode("prod"); viewer.scrollIntoView({ behavior: "smooth", block: "center" }); }));
+  }
+
+  function moldStatus(m) {
+    const a = ageOf(m);
+    const parts = partDecisions(m);
+    const worst = parts.reduce((x, r) => r.v.rank > x.rank ? r.v : x, { rank: -1 });
+    const repeats = parts.filter(r => r.count >= 2).length;
+    let v = { cls: "v-ok", text: "양호", rank: 0 };
+    if (a.pct >= AGE_BAD || worst.rank === 2) v = { cls: "v-bad", text: worst.rank === 2 ? "재제작 검토" : "교체 검토", rank: 2 };
+    else if (a.pct >= AGE_WARN || worst.rank === 1) v = { cls: "v-warn", text: "주의", rank: 1 };
+    return { a, repeats, v, count: eventsOf(m.mold_id).length };
+  }
+  function renderMoldTable() {
+    const f = state.moldFilter;
+    const tons = [450, 220, 170, 110];
+    const filt = [["all", "전체"], ["horizontal", "수평"], ["vertical", "수직"]].concat(tons.map(t => ["t" + t, t + "톤"]));
+    $("mold-filters").innerHTML = filt.map(x => `<button type="button" class="chip ${f === x[0] ? "on" : ""}" data-mf="${x[0]}" aria-pressed="${f === x[0]}">${x[1]}</button>`).join("");
+    const list = data.molds.filter(m => f === "all" || m.orient === f || (f[0] === "t" && m.tonnage === Number(f.slice(1))));
+    $("mold-count").textContent = `${list.length} / ${data.molds.length}벌`;
+    $("mold-table").innerHTML = `<thead><tr><th>금형번호</th><th>품명</th><th>현재 설비</th><th>구분</th><th class="r">톤수</th><th>호환 설비</th><th class="r">이력</th><th class="r">노후도</th><th>상태</th></tr></thead><tbody>` +
+      list.map(m => {
+        const st = moldStatus(m);
+        const comp = compatibleMachines(m);
+        return `<tr class="${m.mold_id === state.moldId ? "cur" : ""}" data-mold="${esc(m.mold_id)}" tabindex="0" aria-label="${esc(m.mold_id)} 선택">
+          <td class="mono">${esc(m.mold_id)}</td>
+          <td>${esc(m.part_name)}</td>
+          <td class="mono">${esc(m.machine || "-")}</td>
+          <td><span class="orient ${m.orient === "vertical" ? "v" : "h"}">${ORIENT[m.orient] || "-"}</span></td>
+          <td class="r">${m.tonnage ? m.tonnage + "톤" : "-"}</td>
+          <td>${m.orient === "vertical" ? `${esc(m.machine)} 전용` : `${rangeText(comp)} <span class="sub">(${comp.length}대)</span>`}</td>
+          <td class="r">${st.count}건${st.repeats ? ` <span class="sub">반복 ${st.repeats}</span>` : ""}</td>
+          <td class="r">${st.a.pct.toFixed(0)}%</td>
+          <td><span class="verdict ${st.v.cls}">${st.v.text}</span></td>
+        </tr>`;
+      }).join("") + `</tbody>`;
+  }
+  function moldOrient() { return $("m-orient-v").checked ? "vertical" : "horizontal"; }
+  function syncMoldMachines() {
+    const v = moldOrient() === "vertical";
+    $("m-ton-wrap").hidden = v;
+    const ids = v ? MACHINES.filter(x => x.orient === "vertical").map(x => x.id)
+                  : MACHINES.filter(x => x.orient === "horizontal" && x.ton === Number($("m-ton").value)).map(x => x.id);
+    $("m-machine").innerHTML = ids.map(id => `<option>${id}</option>`).join("");
+  }
+  $("m-orient-h").addEventListener("change", syncMoldMachines);
+  $("m-orient-v").addEventListener("change", syncMoldMachines);
+  $("m-ton").addEventListener("change", syncMoldMachines);
+  $("mold-add-btn").addEventListener("click", () => {
+    $("mold-form").reset();
+    $("m-err").textContent = "";
+    renderVendorList();
+    syncMoldMachines();
+    $("mold-form").hidden = false;
+    $("m-id").focus();
+  });
+  $("m-cancel").addEventListener("click", () => { $("mold-form").hidden = true; });
+  $("mold-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const id = $("m-id").value.trim(), name = $("m-name").value.trim();
+    if (!id || !name) { $("m-err").textContent = "금형번호와 품명을 입력하세요."; return; }
+    if (data.molds.some(m => m.mold_id.toLowerCase() === id.toLowerCase())) { $("m-err").textContent = "이미 있는 금형번호입니다."; $("m-id").focus(); return; }
+    const orient = moldOrient();
+    const m = {
+      mold_id: id, part_name: name, part_no: $("m-no").value.trim(), cavity: Number($("m-cav").value) || 1,
+      orient, tonnage: orient === "vertical" ? null : Number($("m-ton").value), machine: $("m-machine").value,
+      resin: $("m-resin").value.trim(), material: $("m-material").value,
+      maker: $("m-maker").value.trim(), made_on: $("m-made").value, shots: Number($("m-shots").value) || 0,
+      rev: $("m-rev").value.trim() || "-", runner: $("m-runner").value.trim(), slide: $("m-slide").value.trim(), remake: {},
+      products: [{ part_no: $("m-no").value.trim(), part_name: name }], shape: { w: 3, d: 3, h: 0.5 }
+    };
+    data.molds.push(m);
+    saveData();
+    $("mold-form").hidden = true;
+    renderMoldSelect();
+    selectMold(id);
+    toast(`${id}을(를) 등록했습니다. 이제 이력을 등록할 수 있습니다`);
+  });
+  function selectMold(id) {
+    state.moldId = id;
+    $("mold").value = id;
+    state.partFilter = null; state.selectedEvent = null; state.highlightPart = null; state.editingInfo = false;
+    renderAll();
+  }
+  $("mold-filters").addEventListener("click", e => {
+    const b = e.target.closest("[data-mf]");
+    if (b) { state.moldFilter = b.dataset.mf; renderMoldTable(); }
+  });
+  $("mold-table").addEventListener("click", e => {
+    const tr = e.target.closest("[data-mold]");
+    if (tr) selectMold(tr.dataset.mold);
+  });
+  $("mold-table").addEventListener("keydown", e => {
+    const tr = e.target.closest("[data-mold]");
+    if (tr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); selectMold(tr.dataset.mold); }
+  });
+
+  function renderSummary() {
+    const evs = moldEvents();
+    const year = String(new Date().getFullYear());
+    const total = evs.reduce((s, e) => s + (Number(e.cost) || 0), 0);
+    const yearTotal = evs.filter(e => e.date.startsWith(year)).reduce((s, e) => s + (Number(e.cost) || 0), 0);
+    const repairCost = evs.filter(e => e.type === "repair").reduce((s, e) => s + (Number(e.cost) || 0), 0);
+    const outCost = evs.filter(e => e.work_by === "outsourced").reduce((s, e) => s + (Number(e.cost) || 0), 0);
+    const inCost = total - outCost;
+    const stats = partStats(evs);
+    const repeats = Object.keys(stats).filter(k => stats[k].fixes >= 2);
+    const last = evs[0];
+    $("summary").innerHTML = `
+      <div class="tile"><span class="k">이력</span><span class="v">${evs.length}건</span><span class="s">최근 ${last ? esc(last.date) : "-"}</span></div>
+      <div class="tile"><span class="k">누적 비용</span><span class="v">${wonShort(total)}</span><span class="s">외주 ${wonShort(outCost)} · 내주 ${wonShort(inCost)}</span><span class="s">그중 수리비 ${wonShort(repairCost)}</span></div>
+      <div class="tile"><span class="k">${year}년 비용</span><span class="v">${wonShort(yearTotal)}</span><span class="s">${evs.filter(e => e.date.startsWith(year)).length}건 기준</span></div>
+      <div class="tile ${repeats.length ? "warn" : ""}"><span class="k">반복 수정 부위 (수정·수리 2회 이상)</span><span class="v">${repeats.length}곳</span><span class="s">${repeats.length ? repeats.map(k => esc(PART_NAME[k])).join(", ") : "없음"}</span></div>`;
+  }
+
+  function renderFilters() {
+    const evs = moldEvents();
+    $("filters").innerHTML = TYPES.map(t => {
+      const n = evs.filter(e => e.type === t.id).length;
+      const on = state.types.has(t.id);
+      return `<button type="button" class="chip ${on ? "on" : ""}" data-type="${t.id}" aria-pressed="${on}"><span class="dot" style="background:var(${t.color})"></span>${t.name}<span class="cnt">${n}</span></button>`;
+    }).join("") + `<span class="fsep" aria-hidden="true"></span>` +
+      [["all", "내주·외주 전체"], ["internal", "내주"], ["outsourced", "외주"]].map(w => {
+        const on = state.workBy === w[0];
+        const n = w[0] === "all" ? evs.length : evs.filter(e => e.work_by === w[0]).length;
+        return `<button type="button" class="chip ${on ? "on" : ""}" data-wb="${w[0]}" aria-pressed="${on}">${w[1]}<span class="cnt">${n}</span></button>`;
+      }).join("");
+  }
+
+  function renderPartList() {
+    const stats = partStats(moldEvents());
+    $("partlist").innerHTML = PARTS.map(p => {
+      const s = stats[p.id];
+      const rep = s && s.fixes >= 2;
+      const on = state.partFilter === p.id;
+      return `<button type="button" class="chip ${on ? "on" : ""} ${rep ? "repeat" : ""}" data-part="${p.id}" aria-pressed="${on}">${esc(p.name)}<span class="cnt">${s ? s.total : 0}</span></button>`;
+    }).join("");
+  }
+
+  function filteredEvents() {
+    const q = state.q.trim().toLowerCase();
+    return moldEvents().filter(e => {
+      if (!state.types.has(e.type)) return false;
+      if (state.workBy !== "all" && e.work_by !== state.workBy) return false;
+      if (state.partFilter && e.part_id !== state.partFilter) return false;
+      if (q) {
+        const hay = [e.title, e.reason, e.detail, e.vendor, e.owner, e.type_label, PART_NAME[e.part_id]].join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+
+  function detailHTML(e) {
+    const rows = [];
+    if (e.reason) rows.push(["사유", esc(e.reason)]);
+    if (e.detail) rows.push(["상세", esc(e.detail)]);
+    Object.keys(e.extra || {}).forEach(k => {
+      const v = e.extra[k];
+      if (v === "" || v == null) return;
+      rows.push([EXTRA_LABEL[k] || k, k === "shots" ? Number(v).toLocaleString("ko-KR") : esc(v)]);
+    });
+    rows.push(["작업 구분", (WORK_BY[e.work_by] || "-") + (e.vendor ? ` · ${esc(e.vendor)}` : "")]);
+    if (e.owner) rows.push(["담당자", esc(e.owner)]);
+    rows.push(["비용", won(e.cost) + (e.cost ? ` · ${PAYER[e.cost_payer] || ""} 부담` : "")]);
+    rows.push(["부위", e.part_id ? esc(PART_NAME[e.part_id]) : "연결 안 됨"]);
+    let dims = "";
+    if (e.dimensions && e.dimensions.length) {
+      dims = `<table class="dims"><thead><tr><th>측정 부위</th><th>변경 전</th><th>변경 후</th><th>변화</th><th>공차 ±</th></tr></thead><tbody>` +
+        e.dimensions.map(d => {
+          const delta = (Number(d.after) - Number(d.before));
+          const sign = delta > 0 ? "+" : "";
+          return `<tr><td>${esc(d.point_name)}</td><td>${Number(d.before).toFixed(2)}</td><td>${Number(d.after).toFixed(2)}</td><td>${sign}${delta.toFixed(2)}</td><td>${d.tolerance == null || d.tolerance === "" ? "-" : Number(d.tolerance).toFixed(2)}</td></tr>`;
+        }).join("") + `</tbody></table>`;
+    }
+    let atts = "";
+    if (e.attachments && e.attachments.length) {
+      atts = `<div class="att-grid">` + e.attachments.map((a, i) => {
+        const cap = `${esc(ATT_KIND[a.file_type] || "첨부")}${a.rev ? " · Rev " + esc(a.rev) : ""}`;
+        if (/^image\//.test(a.mime)) {
+          return `<button type="button" class="att-thumb" data-att="${esc(e.event_id)}:${i}" aria-label="${cap} 크게 보기"><img src="${a.data}" alt="${esc(a.name)}"><span>${cap}</span></button>`;
+        }
+        return `<div class="att-thumb" style="cursor:default"><span class="att-file">PDF</span><span>${cap}</span><span title="${esc(a.name)}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.name)}</span></div>`;
+      }).join("") + `</div>`;
+    }
+    const acts = `<div class="detail-acts"><button type="button" class="btn small" data-copy="${esc(e.event_id)}">이 이력 복사해서 새로 등록</button></div>`;
+    return `<dl>${rows.map(r => `<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join("")}</dl>${dims}${atts}${acts}`;
+  }
+
+  function renderList() {
+    const evs = filteredEvents();
+    const all = moldEvents().length;
+    $("list-count").textContent = evs.length === all ? `${all}건` : `${evs.length} / ${all}건`;
+    const ap = $("active-part");
+    if (state.partFilter) {
+      ap.classList.add("show");
+      $("active-part-text").textContent = `부위: ${PART_NAME[state.partFilter]} 이력만 보는 중`;
+    } else {
+      ap.classList.remove("show");
+    }
+    if (!evs.length) {
+      $("list").innerHTML = `<li class="empty">조건에 맞는 이력이 없습니다. 필터를 풀거나 새 이력을 등록하세요.</li>`;
+      return;
+    }
+    $("list").innerHTML = evs.map(e => {
+      const t = TYPE[e.type];
+      const sel = state.selectedEvent === e.event_id;
+      return `<li class="card ${sel ? "sel open" : ""}" style="--tc:var(${t.color})">
+        <button type="button" class="card-btn" data-ev="${esc(e.event_id)}" aria-expanded="${sel}">
+          <span class="card-top"><span class="tag">${esc(typeName(e))}</span><span class="wb ${e.work_by === "outsourced" ? "out" : "in"}">${WORK_BY[e.work_by] || "내주"}</span><span class="mono">${esc(e.date)}</span><span>${e.part_id ? esc(PART_NAME[e.part_id]) : "부위 없음"}</span>${e.work_by === "outsourced" && e.vendor ? `<span>${esc(e.vendor)}</span>` : ""}</span>
+          <span class="card-title">${esc(e.title)}</span>
+          <span class="card-meta"><span class="cost">${e.cost ? won(e.cost) : "비용 없음"}</span><span class="pill ${esc(e.status)}">${STATUS[e.status] || ""}</span>${e.dimensions && e.dimensions.length ? `<span>치수 ${e.dimensions.length}곳</span>` : ""}${e.attachments && e.attachments.length ? `<span>첨부 ${e.attachments.length}</span>` : ""}</span>
+        </button>
+        <div class="detail">${detailHTML(e)}</div>
+      </li>`;
+    }).join("");
+  }
+
+  function currentMold() { return data.molds.find(x => x.mold_id === state.moldId); }
+
+  function ageOf(m) {
+    const life = (LIFE[m.material] || LIFE.gf30).shots;
+    const pct = m.shots / life * 100;
+    const v = pct >= AGE_BAD ? { cls: "v-bad", text: "교체 검토" } : pct >= AGE_WARN ? { cls: "v-warn", text: "주의" } : { cls: "v-ok", text: "양호" };
+    return { life, pct, remain: Math.max(life - m.shots, 0), v };
+  }
+
+  function partDecisions(m) {
+    const rows = {};
+    eventsOf(m.mold_id).forEach(e => {
+      if (!e.part_id || !REPEAT_TYPES.includes(e.type)) return;
+      const r = rows[e.part_id] = rows[e.part_id] || { part: e.part_id, count: 0, cost: 0 };
+      r.count++;
+      r.cost += Number(e.cost) || 0;
+    });
+    return Object.values(rows).map(r => {
+      const remake = m.remake ? m.remake[r.part] : null;
+      r.remake = remake || null;
+      r.ratio = remake ? r.cost / remake * 100 : null;
+      if ((r.ratio != null && r.ratio >= RATIO_BAD) || r.count >= COUNT_BAD) r.v = { cls: "v-bad", text: "재제작 검토", rank: 2 };
+      else if ((r.ratio != null && r.ratio >= RATIO_WARN) || r.count >= COUNT_WARN) r.v = { cls: "v-warn", text: "주의", rank: 1 };
+      else r.v = { cls: "v-ok", text: "수리 유지", rank: 0 };
+      return r;
+    }).sort((a, b) => b.v.rank - a.v.rank || (b.ratio || 0) - (a.ratio || 0));
+  }
+
+  function vendorSummaryHTML(m) {
+    const rows = {};
+    eventsOf(m.mold_id).filter(e => e.work_by === "outsourced").forEach(e => {
+      const k = e.vendor || "업체명 없음";
+      const r = rows[k] = rows[k] || { n: 0, cost: 0, last: "" };
+      r.n++; r.cost += Number(e.cost) || 0; if (e.date > r.last) r.last = e.date;
+    });
+    const list = Object.entries(rows).sort((a, b) => b[1].cost - a[1].cost);
+    if (!list.length) return `<div class="vtitle">외주 업체별 현황: 외주 이력 없음</div>`;
+    return `<div class="vtitle">외주 업체별 현황 (이 금형)</div><div class="table-wrap"><table class="vtable"><thead><tr><th>외주 업체</th><th class="r">건수</th><th class="r">비용</th><th class="r">최근</th></tr></thead><tbody>` +
+      list.map(([v, r]) => `<tr><td>${esc(v)}</td><td class="r">${r.n}건</td><td class="r">${wonShort(r.cost)}</td><td class="r mono">${esc(r.last)}</td></tr>`).join("") + `</tbody></table></div>`;
+  }
+  function renderDecide() {
+    const m = currentMold();
+    const a = ageOf(m);
+    const pct = a.pct;
+    const fillW = Math.min(pct, 100);
+    $("age").innerHTML = `
+      <div class="lab" style="font-size:12px;color:var(--muted);">금형 노후도</div>
+      <div class="big"><span class="pct">${pct.toFixed(0)}%</span><span class="verdict ${a.v.cls}">${a.v.text}</span></div>
+      <div class="gauge ${a.v.cls}" role="img" aria-label="노후도 ${pct.toFixed(0)}%"><span class="fill" style="width:${fillW}%"></span><span class="mark" style="left:${AGE_WARN}%"></span><span class="mark" style="left:${AGE_BAD}%"></span></div>
+      <div class="gauge-scale"><span style="left:0;transform:none">0</span><span style="left:${AGE_WARN}%">${AGE_WARN}%</span><span style="left:${AGE_BAD}%">${AGE_BAD}%</span></div>
+      <div class="line">누적 ${Number(m.shots).toLocaleString("ko-KR")}타 / 기준 ${a.life.toLocaleString("ko-KR")}타</div>
+      <div class="line">남은 수명 약 ${a.remain.toLocaleString("ko-KR")}타</div>
+      <div class="f" style="margin-top:4px;">
+        <label for="material">원재료 (${esc(m.resin || "")})</label>
+        <select id="material">
+          <option value="gf30"${m.material === "gf30" ? " selected" : ""}>GF30% 함유 · 기준 50만 타</option>
+          <option value="nongf"${m.material === "nongf" ? " selected" : ""}>Non GF · 기준 100만 타</option>
+        </select>
+      </div>`;
+    $("material").addEventListener("change", e => {
+      m.material = e.target.value;
+      saveData();
+      renderInfo();
+      renderDecide();
+      toast(`기준 수명을 ${LIFE[m.material].shots.toLocaleString("ko-KR")}타로 바꿨습니다`);
+    });
+
+    const rows = partDecisions(m);
+    const review = rows.filter(r => r.v.rank === 2).map(r => PART_NAME[r.part]);
+    let msg;
+    if (a.pct >= AGE_BAD) msg = `노후도가 기준의 ${AGE_BAD}%를 넘었습니다. 부위 수리보다 금형 전체 재제작 견적을 먼저 받아 보세요.`;
+    else if (review.length && a.pct >= AGE_WARN) msg = `${review.join(", ")}은(는) 재제작 검토 대상입니다. 노후도도 주의 구간(${a.pct.toFixed(0)}%)이라 부위 재제작과 금형 전체 재제작을 함께 비교하세요.`;
+    else if (review.length) msg = `${review.join(", ")}은(는) 재제작 검토 대상입니다. 금형 자체는 수명이 남아 있어 부위 재제작이 우선입니다.`;
+    else if (a.pct >= AGE_WARN) msg = `부위별로는 수리로 충분합니다. 노후도가 주의 구간이니 점검 주기를 줄이세요.`;
+    else msg = `지금은 수리로 충분합니다. 반복 수정 부위와 노후도를 계속 지켜보면 됩니다.`;
+
+    const table = rows.length ? `<div class="table-wrap"><table class="dtable">
+      <thead><tr><th>부위</th><th class="r">수정·수리</th><th class="r">누적 수리비</th><th class="r">재제작 견적</th><th>견적 대비</th><th>판단</th></tr></thead>
+      <tbody>${rows.map(r => `<tr class="${r.v.cls}">
+        <td><button type="button" class="chip" data-part="${r.part}">${esc(PART_NAME[r.part])}</button></td>
+        <td class="r">${r.count}회</td>
+        <td class="r">${wonShort(r.cost)}</td>
+        <td class="r">${r.remake ? wonShort(r.remake) : "견적 없음"}</td>
+        <td><span class="ratio"><span class="bar"><i style="width:${Math.min(r.ratio || 0, 100)}%"></i><b></b></span><span>${r.ratio == null ? "-" : r.ratio.toFixed(0) + "%"}</span></span></td>
+        <td><span class="verdict ${r.v.cls}">${r.v.text}</span></td>
+      </tr>`).join("")}</tbody></table></div>` : `<div class="empty">수정·수리 이력이 있는 부위가 없습니다.</div>`;
+
+    $("parts-decide").innerHTML = `
+      <div class="conclusion" id="conclusion">${esc(msg)}</div>
+      ${table}
+      ${vendorSummaryHTML(m)}
+      <div class="rule">판단 기준(데모용 가정): 부위 누적 수리비(치수수정+수리)가 재제작 견적의 ${RATIO_BAD}% 이상이거나 ${COUNT_BAD}회 이상이면 재제작 검토, ${RATIO_WARN}% 이상이거나 ${COUNT_WARN}회 이상이면 주의. 노후도 = 누적 쇼트 ÷ 기준 수명(GF30% 함유 50만 타, Non GF 100만 타), ${AGE_WARN}% 이상 주의, ${AGE_BAD}% 이상 교체 검토. 재제작 견적은 예시 금액입니다.</div>`;
+  }
+
+  $("parts-decide").addEventListener("click", e => {
+    const b = e.target.closest("[data-part]");
+    if (b) onPartClicked(b.dataset.part);
+  });
+
+  function renderAll() {
+    if (typeof viewMode !== "undefined" && viewMode === "prod") setTimeout(renderProductPanel, 0);
+    renderMoldTable();
+    renderInfo();
+    renderSummary();
+    renderDecide();
+    renderFilters();
+    renderPartList();
+    renderList();
+    refreshBadges();
+    applyHighlight();
+  }
+
+  /* ---------- Events: filters, list ---------- */
+  $("mold").addEventListener("change", e => selectMold(e.target.value));
+  $("q").addEventListener("input", e => { state.q = e.target.value; renderList(); });
+  $("filters").addEventListener("click", e => {
+    const w = e.target.closest("[data-wb]");
+    if (w) { state.workBy = w.dataset.wb; renderFilters(); renderList(); return; }
+    const b = e.target.closest("[data-type]");
+    if (!b) return;
+    const id = b.dataset.type;
+    if (state.types.has(id) && state.types.size === TYPES.length) {
+      state.types = new Set([id]);
+    } else if (state.types.has(id)) {
+      state.types.delete(id);
+      if (!state.types.size) state.types = new Set(TYPES.map(t => t.id));
+    } else {
+      state.types.add(id);
+    }
+    renderFilters();
+    renderList();
+  });
+  $("partlist").addEventListener("click", e => {
+    const b = e.target.closest("[data-part]");
+    if (b) onPartClicked(b.dataset.part);
+  });
+  $("clear-part").addEventListener("click", () => setPartFilter(null));
+  $("list").addEventListener("click", e => {
+    const att = e.target.closest("[data-att]");
+    if (att) {
+      const [eid, idx] = att.dataset.att.split(":");
+      const ev = data.events.find(x => x.event_id === eid);
+      const a = ev && ev.attachments[Number(idx)];
+      if (a) openLightbox(a);
+      return;
+    }
+    const cp = e.target.closest("[data-copy]");
+    if (cp) { copyEvent(cp.dataset.copy); return; }
+    const b = e.target.closest("[data-ev]");
+    if (!b) return;
+    const id = b.dataset.ev;
+    const ev = data.events.find(x => x.event_id === id);
+    if (state.selectedEvent === id) {
+      state.selectedEvent = null;
+      state.highlightPart = null;
+    } else {
+      state.selectedEvent = id;
+      state.highlightPart = ev && ev.part_id ? ev.part_id : null;
+    }
+    renderList();
+    applyHighlight();
+    refreshBadges();
+  });
+
+  function setPartFilter(id) {
+    state.partFilter = id;
+    if (typeof viewMode !== "undefined" && viewMode === "prod") setTimeout(renderProductPanel, 0);
+    state.highlightPart = id;
+    state.selectedEvent = null;
+    renderPartList();
+    renderList();
+    applyHighlight();
+    refreshBadges();
+  }
+
+  function onPartClicked(id) {
+    if (state.pickMode) {
+      $("f-part").value = id;
+      setPickMode(false);
+      toast(`${PART_NAME[id]}을(를) 연결했습니다`);
+      state.highlightPart = id;
+      applyHighlight();
+      return;
+    }
+    setPartFilter(state.partFilter === id ? null : id);
+  }
+
+  /* ---------- Form ---------- */
+  function renderVendorList() {
+    const set = new Set();
+    data.events.forEach(e => { if (e.work_by === "outsourced" && e.vendor) set.add(e.vendor); });
+    data.molds.forEach(m => { if (m.maker) set.add(m.maker); });
+    $("vendor-list").innerHTML = Array.from(set).sort().map(v => `<option value="${esc(v)}"></option>`).join("");
+  }
+  function renderLabelList() {
+    $("label-list").innerHTML = (data.labels || []).map(l => `<option value="${esc(l)}"></option>`).join("");
+  }
+  $("f-part").innerHTML = `<option value="">선택 안 함</option>` + PARTS.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+
+  function addDimRow(v) {
+    v = v || {};
+    const row = document.createElement("div");
+    row.className = "dimrow";
+    const n = $("dim-rows").children.length + 1;
+    row.innerHTML = `<input type="text" aria-label="측정 부위 ${n}" class="d-name" value="${esc(v.point_name || "")}">
+      <input type="number" step="0.01" aria-label="변경 전 ${n}" class="d-before">
+      <input type="number" step="0.01" aria-label="변경 후 ${n}" class="d-after">
+      <input type="number" step="0.01" min="0" aria-label="공차 ${n}" class="d-tol">
+      <button type="button" class="iconbtn d-del" aria-label="이 측정 부위 삭제">×</button>`;
+    $("dim-rows").appendChild(row);
+  }
+  $("add-dim").addEventListener("click", () => addDimRow());
+  $("dim-rows").addEventListener("click", e => {
+    const b = e.target.closest(".d-del");
+    if (!b) return;
+    b.parentElement.remove();
+    if (!$("dim-rows").children.length) addDimRow();
+  });
+
+  function workByValue() { return $("f-wb-outsourced").checked ? "outsourced" : "internal"; }
+  function syncWorkBy() {
+    const out = workByValue() === "outsourced";
+    $("vendor-label").textContent = out ? "외주 업체명" : "사내 작업 부서";
+    $("vendor-label").classList.toggle("req", out);
+    $("f-vendor").placeholder = out ? "예: 예시금형(주)" : "예: 공무팀";
+  }
+  $("f-wb-internal").addEventListener("change", syncWorkBy);
+  $("f-wb-outsourced").addEventListener("change", syncWorkBy);
+
+  $("help-btn").addEventListener("click", () => {
+    const open = $("help").hidden;
+    $("help").hidden = !open;
+    $("help-btn").setAttribute("aria-expanded", String(open));
+    $("help-btn").classList.toggle("on", open);
+    if (open) $("help").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+  $("help-close").addEventListener("click", () => {
+    $("help").hidden = true;
+    $("help-btn").setAttribute("aria-expanded", "false");
+    $("help-btn").classList.remove("on");
+  });
+
+  function syncTypeFields() {
+    const t = $("f-type").value;
+    ["dimension_fix", "repair", "design_change", "inspection", "transfer"].forEach(k => { $("fs-" + k).hidden = k !== t; });
+    $("type-label-wrap").hidden = t !== "other";
+  }
+  $("f-type").addEventListener("change", syncTypeFields);
+
+  /* Attachments in the form */
+  let pending = [];
+  function renderPending() {
+    $("a-list").innerHTML = pending.map((a, i) => `<li class="att-item">
+      ${/^image\//.test(a.mime) ? `<img src="${a.data}" alt="">` : `<span class="att-file" style="width:40px;height:30px;font-size:10px;">PDF</span>`}
+      <span class="nm" title="${esc(a.name)}">${esc(ATT_KIND[a.file_type])}${a.rev ? " · Rev " + esc(a.rev) : ""} · ${esc(a.name)}</span>
+      <span class="mono">${(a.size / 1024).toFixed(0)}KB</span>
+      <button type="button" class="iconbtn" data-rm="${i}" aria-label="${esc(a.name)} 빼기">×</button></li>`).join("");
+  }
+  $("a-list").addEventListener("click", e => {
+    const b = e.target.closest("[data-rm]");
+    if (!b) return;
+    pending.splice(Number(b.dataset.rm), 1);
+    renderPending();
+  });
+  function readAsDataURL(file) {
+    return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+  }
+  function shrinkImage(url, maxSide) {
+    return new Promise(res => {
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        const g = c.getContext("2d");
+        g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(img, 0, 0, c.width, c.height);
+        res(c.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = () => res(url);
+      img.src = url;
+    });
+  }
+  $("a-file").addEventListener("change", async e => {
+    const files = Array.from(e.target.files || []);
+    const kind = $("a-kind").value, rev = $("a-rev").value.trim();
+    const skipped = [];
+    for (const f of files) {
+      const isPdf = f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+      const isImg = /^image\//.test(f.type);
+      if (!isPdf && !isImg) { skipped.push(f.name + " (형식)"); continue; }
+      let url = await readAsDataURL(f);
+      let mime = f.type || (isPdf ? "application/pdf" : "image/png");
+      if (isImg && mime !== "image/svg+xml") { url = await shrinkImage(url, 1600); mime = "image/jpeg"; }
+      const size = Math.round(url.length * 0.75);
+      if (size > MAX_FILE) { skipped.push(f.name + " (1.5MB 초과)"); continue; }
+      pending.push({ file_type: kind, rev, name: f.name, mime, size, data: url });
+    }
+    e.target.value = "";
+    renderPending();
+    if (skipped.length) toast("첨부하지 못한 파일: " + skipped.join(", "));
+  });
+
+  /* Lightbox */
+  let lbReturn = null;
+  function openLightbox(a) {
+    lbReturn = document.activeElement;
+    $("lb-img").src = a.data;
+    $("lb-img").alt = a.name;
+    $("lb-title").textContent = `${ATT_KIND[a.file_type] || "첨부"}${a.rev ? " · Rev " + a.rev : ""} · ${a.name}`;
+    $("lightbox").hidden = false;
+    $("lb-close").focus();
+  }
+  function closeLightbox() {
+    $("lightbox").hidden = true;
+    $("lb-img").src = "";
+    if (lbReturn) lbReturn.focus();
+  }
+  $("lb-close").addEventListener("click", closeLightbox);
+  $("lightbox").addEventListener("click", e => { if (e.target === $("lightbox")) closeLightbox(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("lightbox").hidden) closeLightbox(); });
+
+  /* Copy an earlier event into a new form */
+  function copyEvent(id) {
+    const ev = data.events.find(x => x.event_id === id);
+    if (!ev) return;
+    openForm();
+    $("f-type").value = ev.type; syncTypeFields();
+    $("f-type-label").value = ev.type_label || "";
+    $("f-title").value = ev.title;
+    $("f-part").value = ev.part_id || "";
+    $("f-reason").value = ev.reason || "";
+    $("f-owner").value = ev.owner || "";
+    $("f-vendor").value = ev.vendor || "";
+    $(ev.work_by === "outsourced" ? "f-wb-outsourced" : "f-wb-internal").checked = true; syncWorkBy();
+    $("f-payer").value = ev.cost_payer || "internal";
+    if (ev.dimensions && ev.dimensions.length) {
+      $("dim-rows").innerHTML = "";
+      ev.dimensions.forEach(d => addDimRow({ point_name: d.point_name }));
+    }
+    Object.keys(ev.extra || {}).forEach(k => {
+      const map = { symptom: "x-symptom", cause: "x-cause", action: "x-action", eco: "x-eco", dept: "x-dept" };
+      if (map[k]) $(map[k]).value = ev.extra[k] || "";
+    });
+    $("f-title").focus();
+    toast("이전 이력을 복사했습니다. 날짜, 치수, 비용을 확인하세요");
+  }
+
+  function fillTransfer() {
+    const m = currentMold();
+    $("x-from").value = m.machine || "";
+    const opts = compatibleMachines(m).filter(id => id !== m.machine);
+    $("x-to").innerHTML = opts.length ? opts.map(id => `<option>${id}</option>`).join("") : `<option value="">이동 가능한 설비 없음 (${m.orient === "vertical" ? "수직 전용" : "호환 설비 없음"})</option>`;
+  }
+  function openForm() {
+    $("form").reset();
+    pending = [];
+    renderPending();
+    $("dim-rows").innerHTML = "";
+    addDimRow();
+    $("f-date").value = todayISO();
+    $("f-part").value = state.partFilter || "";
+    $("form-err").textContent = "";
+    renderLabelList();
+    renderVendorList();
+    syncTypeFields();
+    syncWorkBy();
+    fillTransfer();
+    $("timeline-view").hidden = true;
+    $("form").hidden = false;
+    state.formOpen = true;
+    $("f-type").focus();
+  }
+  function closeForm() {
+    setPickMode(false);
+    $("form").hidden = true;
+    $("timeline-view").hidden = false;
+    state.formOpen = false;
+  }
+  $("add-btn").addEventListener("click", openForm);
+  $("cancel-btn").addEventListener("click", closeForm);
+  $("cancel-top").addEventListener("click", closeForm);
+
+  function setPickMode(on) {
+    state.pickMode = on;
+    $("viewer").classList.toggle("pick", on);
+    $("pick-btn").classList.toggle("on", on);
+    $("pick-btn").textContent = on ? "찍는 중… 취소" : "3D에서 찍기";
+  }
+  $("pick-btn").addEventListener("click", () => setPickMode(!state.pickMode));
+
+  $("form").addEventListener("submit", e => {
+    e.preventDefault();
+    const type = $("f-type").value;
+    const title = $("f-title").value.trim();
+    const date = $("f-date").value;
+    const label = $("f-type-label").value.trim();
+    if (!date || !title) { $("form-err").textContent = "일자와 제목을 입력하세요."; return; }
+    if (type === "other" && !label) { $("form-err").textContent = "기타 유형은 유형 이름을 입력하세요. 예: 세척"; $("f-type-label").focus(); return; }
+    if (type === "transfer" && !$("x-to").value) { $("form-err").textContent = "이 금형은 옮길 수 있는 설비가 없습니다. 수직 금형은 전용 설비에서만 씁니다."; return; }
+    if (workByValue() === "outsourced" && !$("f-vendor").value.trim()) { $("form-err").textContent = "외주는 업체명을 입력하세요."; $("f-vendor").focus(); return; }
+
+    const extra = {};
+    const val = id => $(id).value.trim();
+    if (type === "repair") Object.assign(extra, { symptom: val("x-symptom"), cause: val("x-cause"), action: val("x-action"), period: val("x-period") });
+    if (type === "design_change") Object.assign(extra, { eco: val("x-eco"), dept: val("x-dept"), rev_before: val("x-rev-before"), rev_after: val("x-rev-after") });
+    if (type === "inspection") Object.assign(extra, { result: val("x-result"), shots: val("x-shots") ? Number(val("x-shots")) : "" });
+    if (type === "transfer") Object.assign(extra, { from: val("x-from"), to: val("x-to") });
+
+    let dims = [];
+    if (type === "dimension_fix") {
+      dims = Array.from($("dim-rows").children).map(r => ({
+        point_name: r.querySelector(".d-name").value.trim(),
+        before: r.querySelector(".d-before").value,
+        after: r.querySelector(".d-after").value,
+        tolerance: r.querySelector(".d-tol").value
+      })).filter(d => d.point_name && d.before !== "" && d.after !== "")
+        .map(d => ({ point_name: d.point_name, before: Number(d.before), after: Number(d.after), tolerance: d.tolerance === "" ? null : Number(d.tolerance) }));
+    }
+
+    const costRaw = $("f-cost").value;
+    const ev = {
+      event_id: "EV-" + Date.now().toString(36).toUpperCase(),
+      mold_id: state.moldId,
+      type,
+      type_label: type === "other" ? label : null,
+      date,
+      title,
+      reason: val("f-reason"),
+      detail: val("f-detail"),
+      owner: val("f-owner"),
+      vendor: val("f-vendor"),
+      work_by: workByValue(),
+      cost: costRaw === "" ? null : Number(costRaw),
+      cost_payer: $("f-payer").value,
+      part_id: $("f-part").value || null,
+      status: $("f-status").value,
+      dimensions: dims,
+      attachments: pending.slice(),
+      extra
+    };
+    data.events.push(ev);
+    if (type === "other" && !data.labels.includes(label)) data.labels.push(label);
+    if (type === "transfer" && extra.to) currentMold().machine = extra.to;
+    if (type === "inspection" && extra.shots) {
+      const m = currentMold();
+      if (extra.shots > m.shots) m.shots = extra.shots;
+    }
+    const saved = saveData();
+    closeForm();
+    state.types = new Set(TYPES.map(t => t.id));
+    state.partFilter = null;
+    state.q = "";
+    $("q").value = "";
+    state.selectedEvent = ev.event_id;
+    state.highlightPart = ev.part_id;
+    renderAll();
+    toast(saved ? "이력을 저장했습니다" : "화면에는 추가했지만 브라우저 저장 공간이 부족합니다. 새로고침하면 사라질 수 있으니 첨부를 줄이세요");
+  });
+
+  let resetArmed = false;
+  $("reset-data").addEventListener("click", () => {
+    if (!resetArmed) {
+      resetArmed = true;
+      $("reset-data").textContent = "한 번 더 누르면 되돌립니다";
+      setTimeout(() => { resetArmed = false; $("reset-data").textContent = "예시 데이터로 되돌리기"; }, 3000);
+      return;
+    }
+    resetArmed = false;
+    $("reset-data").textContent = "예시 데이터로 되돌리기";
+    data = clone(SEED);
+    saveData();
+    state.moldId = data.molds[0].mold_id;
+    state.partFilter = null; state.selectedEvent = null; state.highlightPart = null;
+    renderMoldSelect();
+    renderAll();
+    toast("예시 데이터로 되돌렸습니다");
+  });
+
+  /* ---------- 3D ---------- */
+  const viewer = $("viewer");
+  const badgeLayer = $("badges");
+  let three = null;
+
+  function refreshBadges() {
+    if (!three) return;
+    const stats = partStats(moldEvents());
+    badgeLayer.innerHTML = "";
+    three.badgeEls = {};
+    Object.keys(stats).forEach(pid => {
+      const s = stats[pid];
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "badge" + (s.fixes >= 2 ? " repeat" : "") + (state.highlightPart === pid ? " sel" : "");
+      el.innerHTML = `${esc(PART_NAME[pid])}<span class="n">${s.total}</span>`;
+      el.setAttribute("aria-label", `${PART_NAME[pid]} 이력 ${s.total}건${s.fixes >= 2 ? ", 반복 수정" : ""}`);
+      el.addEventListener("click", ev => { ev.stopPropagation(); onPartClicked(pid); });
+      badgeLayer.appendChild(el);
+      three.badgeEls[pid] = el;
+    });
+  }
+
+  function applyHighlight() {
+    if (!three) return;
+    const accent = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#1f5fd1");
+    three.pickables.forEach(m => {
+      const on = m.userData.part === state.highlightPart || m.userData.part === three.hoverPart;
+      const strong = m.userData.part === state.highlightPart;
+      m.material.emissive.copy(on ? accent : new THREE.Color(0x000000));
+      m.material.emissiveIntensity = strong ? 0.75 : (on ? 0.35 : 0);
+    });
+  }
+
+  function initThree() {
+    if (!window.THREE) {
+      const f = document.createElement("div");
+      f.className = "fallback";
+      f.textContent = "3D 화면을 불러오지 못했습니다. 아래 부위 목록을 눌러도 이력을 걸러 볼 수 있습니다.";
+      viewer.appendChild(f);
+      return;
+    }
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.localClippingEnabled = true;
+    viewer.insertBefore(renderer.domElement, viewer.firstChild);
+    renderer.domElement.setAttribute("aria-label", "금형 3D 형상");
+    renderer.domElement.setAttribute("role", "img");
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x8899bb, 0.85));
+    const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+    dir.position.set(6, 10, 8);
+    scene.add(dir);
+    const dir2 = new THREE.DirectionalLight(0xbfd4ff, 0.35);
+    dir2.position.set(-8, 4, -6);
+    scene.add(dir2);
+
+    const root = new THREE.Group();
+    scene.add(root);
+    const movingSide = new THREE.Group();
+    const fixedSide = new THREE.Group();
+    const slideG = new THREE.Group();
+    const ejectG = new THREE.Group();
+    root.add(movingSide, fixedSide);
+    movingSide.add(slideG, ejectG);
+
+    const pickables = [];
+    const partMeshes = {};
+    const edgeMat = new THREE.LineBasicMaterial({ color: 0x1b2a44, transparent: true, opacity: 0.28 });
+
+    function add(geo, color, part, parent, x, y, z, rot) {
+      const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.35, roughness: 0.48 });
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      if (rot) m.rotation.set(rot[0], rot[1], rot[2]);
+      m.userData.part = part;
+      m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), edgeMat));
+      parent.add(m);
+      pickables.push(m);
+      (partMeshes[part] = partMeshes[part] || []).push(m);
+      return m;
+    }
+
+    // Moving (core) side
+    add(new THREE.BoxGeometry(6, 1.6, 5), 0x8c9ab0, "moving_plate", movingSide, 0, -0.8, 0);
+    add(new THREE.BoxGeometry(1.8, 0.42, 1.8), 0xc8d1dd, "core_insert_01", movingSide, -1.3, 0.21, 0);
+    add(new THREE.BoxGeometry(1.8, 0.42, 1.8), 0xc8d1dd, "core_insert_02", movingSide, 1.3, 0.21, 0);
+    [[-2.6, -2.1], [2.6, -2.1], [-2.6, 2.1], [2.6, 2.1]].forEach(p =>
+      add(new THREE.CylinderGeometry(0.17, 0.17, 1.7, 20), 0xe0e5eb, "guide_pin", movingSide, p[0], 0.85, p[1]));
+    add(new THREE.BoxGeometry(4.8, 0.3, 3.6), 0xa6b0be, "ejector", ejectG, 0, -2.05, 0);
+    [[-1.6, -0.45], [-1.0, 0.45], [1.0, -0.45], [1.6, 0.45]].forEach(p =>
+      add(new THREE.CylinderGeometry(0.07, 0.07, 2.32, 12), 0xdadfe6, "ejector", ejectG, p[0], -0.76, p[1]));
+    [[-1.9], [1.9]].forEach(p =>
+      add(new THREE.CylinderGeometry(0.13, 0.13, 0.5, 16), 0x2f6fe0, "cooling", movingSide, p[0], -0.8, 2.74, [Math.PI / 2, 0, 0]));
+
+    // Slide core: block riding on the moving plate, tip that forms the side undercut
+    add(new THREE.BoxGeometry(0.7, 0.62, 1.3), 0x7486a3, "slide_core", slideG, 2.65, 0.31, 0);
+    add(new THREE.BoxGeometry(0.28, 0.1, 0.3), 0xb9c6d8, "slide_core", slideG, 2.16, 0.55, 0);
+    add(new THREE.BoxGeometry(0.9, 0.08, 1.5), 0x9aa6b8, "slide_core", movingSide, 2.75, 0.04, 0); // wear plate
+
+    // Fixed (cavity) side
+    add(new THREE.BoxGeometry(6, 1.6, 5), 0x9aa8bc, "fixed_plate", fixedSide, 0, 0.8, 0);
+    add(new THREE.CylinderGeometry(0.28, 0.32, 0.9, 24), 0xc2a46b, "sprue_gate", fixedSide, 0, 1.95, 0);
+    add(new THREE.TorusGeometry(0.7, 0.12, 12, 40), 0xc2a46b, "sprue_gate", fixedSide, 0, 1.64, 0, [Math.PI / 2, 0, 0]);
+    [[-1.9], [1.9]].forEach(p =>
+      add(new THREE.CylinderGeometry(0.13, 0.13, 0.5, 16), 0x2f6fe0, "cooling", fixedSide, p[0], 0.8, 2.74, [Math.PI / 2, 0, 0]));
+    // Angular pin (drives the slide out as the mold opens) and locking block
+    add(new THREE.CylinderGeometry(0.07, 0.07, 1.5, 14), 0xe3e8ef, "slide_core", fixedSide, 2.62, 0.45, 0, [0, 0, 0.28]);
+    add(new THREE.BoxGeometry(0.3, 0.62, 1.3), 0x5f6f8c, "slide_core", fixedSide, 3.15, 0.31, 0);
+    // Hot runner: heated sprue, manifold, 4 drops (multi-point gates)
+    const GATES_X = [-1.7, -0.9, 0.9, 1.7];
+    add(new THREE.CylinderGeometry(0.12, 0.12, 0.35, 16), 0xd9541e, "hot_runner", fixedSide, 0, 1.42, 0);
+    add(new THREE.BoxGeometry(3.7, 0.2, 0.55), 0xb6401a, "hot_runner", fixedSide, 0, 1.15, 0);
+    GATES_X.forEach(x => add(new THREE.CylinderGeometry(0.08, 0.05, 0.37, 14), 0xd9541e, "hot_runner", fixedSide, x, 0.865, 0));
+
+    // Machine nozzle (not a mold part)
+    const nozzleG = new THREE.Group();
+    const nzMat = new THREE.MeshStandardMaterial({ color: 0x3d4a63, metalness: 0.4, roughness: 0.5 });
+    const nzBody = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.0, 24), nzMat); nzBody.position.y = 0.85;
+    const nzTip = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.08, 0.35, 24), nzMat); nzTip.position.y = 0.175;
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.08, 24), new THREE.MeshStandardMaterial({ color: 0xf97316 }));
+    band.position.y = 0.7;
+    const band2 = band.clone(); band2.position.y = 1.0;
+    nozzleG.add(nzBody, nzTip, band, band2);
+    root.add(nozzleG);
+    let nozzleGap = 0.6;
+
+    // Molded product, 2 cavities. Resin spreads from each hot-runner gate (one copy per gate, clipped to a slab).
+    const HOT = new THREE.Color(0xff7a1a), COOL = new THREE.Color(0x4a5262);
+    const gatePlanes = GATES_X.map(() => [new THREE.Plane(new THREE.Vector3(1, 0, 0), 100), new THREE.Plane(new THREE.Vector3(-1, 0, 0), 100)]);
+    function setGateFill(w) {
+      GATES_X.forEach((g, i) => { gatePlanes[i][0].constant = -(g - w); gatePlanes[i][1].constant = g + w; });
+    }
+    const prodMats = [];
+    function makeProduct(mat, undercut) {
+      const g = new THREE.Group();
+      const W = 1.5, D = 1.5, t = 0.06, H = 0.26;
+      const box = (w, h, d, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); g.add(m); };
+      box(W, t, D, 0, H - t / 2, 0);              // top face (gates land here)
+      box(W, H, t, 0, H / 2, D / 2 - t / 2);
+      box(W, H, t, 0, H / 2, -(D / 2 - t / 2));
+      box(t, H, D, W / 2 - t / 2, H / 2, 0);
+      box(t, H, D, -(W / 2 - t / 2), H / 2, 0);
+      box(0.05, H - t, W - 2 * t, 0, (H - t) / 2, 0);   // centre rib
+      if (undercut) box(0.1, 0.1, 0.3, W / 2 + 0.05, 0.13, 0);  // side clip formed by the slide
+      return g;
+    }
+    const productsG = new THREE.Group();
+    root.add(productsG);
+    GATES_X.forEach((gx, i) => {
+      const mat = new THREE.MeshStandardMaterial({ color: COOL.clone(), metalness: 0.05, roughness: 0.62, clippingPlanes: gatePlanes[i], side: THREE.DoubleSide });
+      prodMats.push(mat);
+      const right = gx > 0;
+      const p = makeProduct(mat, right);
+      p.position.set(right ? 1.3 : -1.3, 0.42, 0);
+      productsG.add(p);
+    });
+    const PAD = new THREE.Vector3(5, -2.6, 0);  // where taken-out parts rest
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.12, 2.4), new THREE.MeshStandardMaterial({ color: 0x55627a, metalness: 0.2, roughness: 0.7 }));
+    pad.position.set(4.85, PAD.y + 0.42 - 0.06, 0);
+    root.add(pad);
+    const fixedMats = [];
+    fixedSide.traverse(o => { if (o.isMesh) { o.material.transparent = true; o.material.depthWrite = false; fixedMats.push(o.material); } });
+
+    // Orbit camera
+    const target = new THREE.Vector3(1.5, 0.4, 0);
+    const home = { theta: 0.62, phi: 1.1, radius: 15.5 };
+    const cam = Object.assign({}, home);
+    function placeCamera() {
+      camera.position.set(
+        target.x + cam.radius * Math.sin(cam.phi) * Math.sin(cam.theta),
+        target.y + cam.radius * Math.cos(cam.phi),
+        target.z + cam.radius * Math.sin(cam.phi) * Math.cos(cam.theta)
+      );
+      camera.lookAt(target);
+    }
+
+    three = { renderer, scene, camera, pickables, partMeshes, badgeEls: {}, hoverPart: null };
+
+    function resize() {
+      const w = viewer.clientWidth, h = viewer.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    new ResizeObserver(resize).observe(viewer);
+    resize();
+
+    // Open / close and the injection cycle
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let openT = 1, openGoal = 1, ejectT = 0;
+    function applyOpen() {
+      fixedSide.position.y = 2.2 * openT;
+      slideG.position.x = 0.5 * openT;
+      ejectG.position.y = 0.35 * ejectT;
+      nozzleG.position.y = 2.2 * openT + 2.4 + nozzleGap;
+    }
+    $("toggle-open").addEventListener("click", () => {
+      if (cyc.t0 != null) return;
+      openGoal = openGoal > 0.5 ? 0 : 1;
+      if (reduce) openT = openGoal;
+      $("toggle-open").textContent = openGoal ? "형 닫기" : "형 열기";
+    });
+    function setFixedOpacity(o) { fixedMats.forEach(m => { m.opacity = o; }); }
+    function applyParams3D(P) {
+      openT = P.open;
+      ejectT = P.pins;
+      nozzleGap = 0.6 * (1 - P.nozzle);
+      setFixedOpacity(0.55 - 0.4 * P.see);
+      if (P.take > 0 || P.cav >= 1) setGateFill(100);
+      else if (P.flow < 1) setGateFill(-0.01);
+      else setGateFill(0.02 + 0.5 * P.cav);
+      prodMats.forEach(m => m.color.copy(HOT).lerp(COOL, P.cool));
+      const lift = 0.35 * P.lift, p = P.take;
+      const up = ease(clamp01(p * 3)), across = ease(clamp01(p * 3 - 1)), down = ease(clamp01(p * 3 - 2));
+      const yUp = lift + 1.0 * up;
+      productsG.position.set(PAD.x * across, yUp * (1 - down) + PAD.y * down, 0);
+    }
+    applyParams3D(cycleParams(null));
+    const prodLabel = $("prod-label"), gateLabel = $("gate-label");
+    const lv = new THREE.Vector3();
+    function placeLabel(el, x, y, z, show) {
+      if (!show) { el.style.display = "none"; return; }
+      lv.set(x, y, z).project(camera);
+      if (lv.z > 1) { el.style.display = "none"; return; }
+      el.style.display = "flex";
+      el.style.left = ((lv.x + 1) / 2 * viewer.clientWidth) + "px";
+      el.style.top = ((1 - lv.y) / 2 * viewer.clientHeight) + "px";
+    }
+
+    // Pointer: rotate, zoom, pick
+    const ray = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    let drag = null;
+    function pickAt(clientX, clientY) {
+      const r = renderer.domElement.getBoundingClientRect();
+      ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+      ray.setFromCamera(ndc, camera);
+      const hit = ray.intersectObjects(pickables, false)[0];
+      return hit ? hit.object.userData.part : null;
+    }
+    renderer.domElement.addEventListener("pointerdown", e => {
+      drag = { x: e.clientX, y: e.clientY, moved: 0 };
+      renderer.domElement.setPointerCapture(e.pointerId);
+    });
+    renderer.domElement.addEventListener("pointermove", e => {
+      if (drag) {
+        const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+        drag.moved += Math.abs(dx) + Math.abs(dy);
+        drag.x = e.clientX; drag.y = e.clientY;
+        cam.theta -= dx * 0.008;
+        cam.phi = Math.min(Math.max(cam.phi - dy * 0.008, 0.25), 2.6);
+      } else if (e.pointerType === "mouse") {
+        const p = pickAt(e.clientX, e.clientY);
+        if (p !== three.hoverPart) {
+          three.hoverPart = p;
+          renderer.domElement.style.cursor = p ? "pointer" : "grab";
+          applyHighlight();
+        }
+      }
+    });
+    renderer.domElement.addEventListener("pointerup", e => {
+      if (drag && drag.moved < 6) {
+        const p = pickAt(e.clientX, e.clientY);
+        if (p) onPartClicked(p);
+      }
+      drag = null;
+    });
+    renderer.domElement.addEventListener("pointerleave", () => {
+      if (three.hoverPart) { three.hoverPart = null; applyHighlight(); }
+    });
+    renderer.domElement.addEventListener("wheel", e => {
+      e.preventDefault();
+      cam.radius = Math.min(Math.max(cam.radius * (1 + Math.sign(e.deltaY) * 0.08), 6), 26);
+    }, { passive: false });
+
+    // Badge placement
+    const box = new THREE.Box3();
+    const v = new THREE.Vector3();
+    function placeBadges() {
+      const w = viewer.clientWidth, h = viewer.clientHeight;
+      Object.keys(three.badgeEls).forEach(pid => {
+        const el = three.badgeEls[pid];
+        const meshes = partMeshes[pid];
+        if (!meshes) { el.style.display = "none"; return; }
+        box.makeEmpty();
+        meshes.forEach(m => box.expandByObject(m));
+        box.getCenter(v);
+        v.y = box.max.y + 0.15;
+        v.project(camera);
+        if (v.z > 1) { el.style.display = "none"; return; }
+        el.style.display = "flex";
+        el.style.left = ((v.x + 1) / 2 * w) + "px";
+        el.style.top = ((1 - v.y) / 2 * h) + "px";
+      });
+    }
+
+    let wasCycling = false;
+    function frame() {
+      const s = cycleTime();
+      if (s != null) {
+        const P = cycleParams(s);
+        applyParams3D(P);
+        wasCycling = true;
+        three.filling = P.filling;
+      } else {
+        if (wasCycling) {
+          applyParams3D(cycleParams(null));
+          openT = openGoal = 1;
+          wasCycling = false;
+          three.filling = false;
+          $("toggle-open").textContent = "형 닫기";
+        }
+        if (openT !== openGoal) {
+          const step = 0.04;
+          openT = Math.abs(openGoal - openT) < step ? openGoal : openT + Math.sign(openGoal - openT) * step;
+        }
+      }
+      applyOpen();
+      if (!secVisible) {
+        placeCamera();
+        renderer.render(scene, camera);
+        placeBadges();
+        placeLabel(prodLabel, pad.position.x, pad.position.y + 0.9, 0, s == null);
+        placeLabel(gateLabel, GATES_X.at(0), 0.75 + 2.2 * openT, 0.4, !!three.filling);
+      }
+      requestAnimationFrame(frame);
+    }
+    renderer.domElement.style.cursor = "grab";
+    frame();
+  }
+
+  /* ---------- Injection cycle, shared by the 3D and section views ---------- */
+  // Stage end times in seconds: animation pacing only, not a real cycle time
+  const STAGES = [1.0, 3.6, 4.8, 5.8, 6.6, 9.0];
+  const FILL = { nozzle: [1.0, 1.3], hot: [1.3, 1.6], cav: [1.6, 3.6] };
+  const cyc = { t0: null };
+  const clamp01 = x => Math.min(Math.max(x, 0), 1);
+  const ease = x => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+  const seg = (s, a, b) => ease(clamp01((s - a) / (b - a)));
+  function cycleTime() { return cyc.t0 == null ? null : (performance.now() - cyc.t0) / 1000; }
+  function cycleParams(s) {
+    if (s == null) return { open: 1, nozzle: 0, flow: 1, cav: 1, cool: 1, lift: 0, pins: 0, take: 1, see: 0, filling: false, rest: true };
+    let open = 1 - seg(s, 0, STAGES[0]);
+    if (s >= STAGES[2]) open = seg(s, STAGES[2], STAGES[3]);
+    return {
+      open,
+      nozzle: seg(s, FILL.nozzle[0], FILL.nozzle[1]) * (1 - seg(s, STAGES[1], STAGES[1] + 0.5)),
+      flow: seg(s, FILL.hot[0], FILL.hot[1]),
+      cav: seg(s, FILL.cav[0], FILL.cav[1]),
+      cool: seg(s, STAGES[1], STAGES[2]),
+      lift: seg(s, STAGES[3], STAGES[4]),
+      pins: seg(s, STAGES[3], STAGES[4]) * (1 - seg(s, STAGES[4] + 0.6, STAGES[5] - 0.6)),
+      take: clamp01((s - STAGES[4]) / (STAGES[5] - STAGES[4])),
+      see: seg(s, 0.1, STAGES[0]) * (1 - seg(s, STAGES[2], STAGES[3])),
+      filling: s >= FILL.hot[0] && s < STAGES[1],
+      rest: false
+    };
+  }
+  const stageEls = Array.from(document.querySelectorAll("#stagebar li"));
+  function showStage(i) { stageEls.forEach((el, k) => { el.classList.toggle("now", k === i); el.classList.toggle("done", i >= 0 && k < i); }); }
+  function startCycle() {
+    if (cyc.t0 != null) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { toast("움직임 줄이기 설정이라 마지막 상태만 보여 줍니다"); return; }
+    cyc.t0 = performance.now();
+    $("play-cycle").disabled = true;
+    $("play-cycle").textContent = "재생 중…";
+    $("toggle-open").disabled = true;
+  }
+  function endCycle() {
+    cyc.t0 = null;
+    showStage(-1);
+    $("play-cycle").disabled = false;
+    $("play-cycle").textContent = "사출 사이클 재생";
+    $("toggle-open").disabled = false;
+  }
+  $("play-cycle").addEventListener("click", startCycle);
+
+  /* View switch: 3D or section */
+  let secVisible = false;
+
+  /* Section drawing (canvas 2D, no library) */
+  const SEC = { W: 1130, H: 490 };
+  function drawSection(P) {
+    const cv = $("section");
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = viewer.clientWidth, h = viewer.clientHeight;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    const ctx = cv.getContext("2d");
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    const top = 40, bottom = 34;
+    const k = Math.min((w - 16) / SEC.W, (h - top - bottom) / SEC.H);
+    const ox = (w - SEC.W * k) / 2, oy = top + (h - top - bottom - SEC.H * k) / 2;
+    ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * ox, dpr * oy);
+    ctx.translate(70, 0);
+
+    const css = getComputedStyle(document.documentElement);
+    const ink = css.getPropertyValue("--ink").trim() || "#0f1d33";
+    const muted = css.getPropertyValue("--muted").trim() || "#5a6b85";
+    const STEEL_F = "#aab9cf", STEEL_M = "#91a2bc", CORE = "#c8d3e3", EJ = "#b3becd", PIN = "#e6ebf2", SLIDE = "#7789a6", HEEL = "#62728f";
+    const EDGE = "rgba(16, 30, 56, 0.6)", ONSTEEL = "#0f1d33";
+    const HOTC = [255, 122, 26], COOLC = [74, 82, 98];
+    const mix = (a, b, t) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(",")})`;
+    const HOT = "rgb(255,122,26)";
+    const resin = mix(HOTC, COOLC, P.cool);
+    const PL = 270, fy = -150 * P.open, sx = 42 * P.open, ej = -16 * P.pins;
+    const cavs = [240, 460];
+    const gates = [200, 280, 420, 500];
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = EDGE;
+    const box = (x, y, bw, bh, fill) => { ctx.fillStyle = fill; ctx.fillRect(x, y, bw, bh); ctx.strokeRect(x, y, bw, bh); };
+    const label = (t, x, y, color, align, size, weight) => {
+      ctx.font = `${weight || 500} ${size || 13}px "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`;
+      ctx.fillStyle = color; ctx.textAlign = align || "left"; ctx.textBaseline = "middle"; ctx.fillText(t, x, y);
+    };
+
+    // Take-out tray
+    box(675, 400, 380, 12, "#5b6982");
+
+    // Moving side: clamp plate, supports, ejector plate, plate, cores, pins
+    box(120, 444, 540, 18, STEEL_M);
+    box(120, 390, 36, 54, STEEL_M);
+    box(624, 390, 36, 54, STEEL_M);
+    box(180, 410 + ej, 420, 18, EJ);
+    box(120, PL, 540, 120, STEEL_M);
+    cavs.forEach(cx => { box(cx - 62, 242, 59, 28, CORE); box(cx + 3, 242, 59, 28, CORE); });
+    cavs.forEach(cx => [cx - 30, cx + 30].forEach(px => box(px - 3, 242 + ej, 6, 168, PIN)));
+
+    // Slide core on the moving side (moves out as the mold opens)
+    box(537 + sx, 236, 75, 34, SLIDE);
+    box(528 + sx, 248, 9, 10, CORE);
+    box(535, 266, 90, 4, "#9aa6b8");  // wear plate
+
+    // Fixed side with pockets, hot-runner bores
+    ctx.save();
+    ctx.translate(0, fy);
+    ctx.beginPath();
+    ctx.rect(120, 170, 540, 100);
+    ctx.rect(165, 236, 150, 34);
+    ctx.rect(385, 236, 150, 34);
+    ctx.rect(535, 236, 77, 34);
+    ctx.rect(186, 190, 328, 26);
+    ctx.rect(343, 170, 14, 20);
+    gates.forEach(g => ctx.rect(g - 5, 216, 10, 20));
+    ctx.fillStyle = STEEL_F; ctx.fill("evenodd"); ctx.stroke();
+    box(612, 236, 48, 34, HEEL);  // locking block
+    // Angular pin
+    ctx.lineCap = "round";
+    ctx.strokeStyle = EDGE; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(560, 196); ctx.lineTo(612, 304); ctx.stroke();
+    ctx.strokeStyle = PIN; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(560, 196); ctx.lineTo(612, 304); ctx.stroke();
+    ctx.lineWidth = 1.2; ctx.strokeStyle = EDGE; ctx.lineCap = "butt";
+    // Hot runner: manifold body, heaters, molten channel, heated sprue, drops
+    box(186, 190, 328, 26, "#7c2d12");
+    ctx.fillStyle = "#fb923c";
+    for (let x = 196; x < 508; x += 24) { ctx.fillRect(x, 192, 10, 4); ctx.fillRect(x, 210, 10, 4); }
+    const glow = P.filling ? 0.75 + 0.25 * Math.sin(performance.now() / 90) : 0.85;
+    ctx.globalAlpha = glow;
+    ctx.fillStyle = HOT;
+    ctx.fillRect(194, 199, 312, 8);
+    ctx.fillRect(343, 170, 14, 29);
+    gates.forEach(g => { ctx.fillStyle = "#7c2d12"; ctx.fillRect(g - 5, 216, 10, 20); ctx.fillStyle = HOT; ctx.fillRect(g - 2, 207, 4, 29); });
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    // Machine nozzle
+    const nz = fy - 26 * (1 - P.nozzle);
+    ctx.save();
+    ctx.translate(0, nz);
+    box(325, 108, 50, 46, "#3d4a63");
+    ctx.fillStyle = "#fb923c"; ctx.fillRect(325, 116, 50, 5); ctx.fillRect(325, 136, 50, 5);
+    ctx.beginPath(); ctx.moveTo(330, 154); ctx.lineTo(370, 154); ctx.lineTo(357, 170); ctx.lineTo(343, 170); ctx.closePath();
+    ctx.fillStyle = "#56637c"; ctx.fill(); ctx.stroke();
+    if (P.nozzle > 0.95 && P.filling) { ctx.fillStyle = HOT; ctx.fillRect(347, 112, 6, 58); }
+    ctx.restore();
+
+    // Molded parts (the shot): 2 cavities, filled outward from the 4 gates
+    const p = P.take;
+    const up = ease(clamp01(p * 3)), across = ease(clamp01(p * 3 - 1)), down = ease(clamp01(p * 3 - 2));
+    const yUp = -16 * P.lift - 60 * up;
+    const dx = 510 * across, dy = yUp * (1 - down) + 130 * down;
+    const showShot = P.rest || P.flow >= 1;
+    if (showShot) {
+      ctx.save();
+      ctx.translate(dx, dy);
+      const wv = 2 + 46 * P.cav;
+      if (P.cav < 1 && !P.rest) {
+        ctx.beginPath();
+        gates.forEach(g => ctx.rect(g - wv, 236, 2 * wv, 34));
+        ctx.clip();
+      }
+      ctx.beginPath();
+      cavs.forEach(cx => {
+        ctx.rect(cx - 75, 236, 150, 34);
+        ctx.rect(cx - 62, 242, 59, 28);
+        ctx.rect(cx + 3, 242, 59, 28);
+      });
+      ctx.rect(528, 248, 7, 10);  // side hole formed by the slide tip (undercut)
+      ctx.fillStyle = resin; ctx.fill("evenodd");
+      ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.stroke();
+      ctx.restore();
+      if (P.filling && P.cav > 0 && P.cav < 1) {
+        ctx.strokeStyle = "rgba(255, 236, 200, 0.95)"; ctx.lineWidth = 2;
+        gates.forEach(g => [g - wv, g + wv].forEach(fx => {
+          const cx = g < 350 ? 240 : 460;
+          if (fx > cx - 75 && fx < cx + 75) { ctx.beginPath(); ctx.moveTo(fx, 236); ctx.lineTo(fx, 270); ctx.stroke(); }
+        }));
+        ctx.lineWidth = 1.2; ctx.strokeStyle = EDGE;
+      }
+    }
+
+    // Labels (logical units; the drawing is scaled to the viewer)
+    label("노즐", 316, 131 + nz, ink, "right", 21, 600);
+    label("고정측 형판", 128, 180 + fy, ONSTEEL, "left", 17, 600);
+    label("핫러너 매니폴드 · 히터", 364, 180 + fy, ONSTEEL, "left", 16, 600);
+    label("게이트 4점 →", 116, 226 + fy, ink, "right", 19, 600);
+    label("캐비티", 240, 227 + fy, ONSTEEL, "center", 15);
+    label("캐비티", 460, 227 + fy, ONSTEEL, "center", 15);
+    label("← 로킹 블록", 666, 253 + fy, ink, "left", 18);
+    label("← 앵귤러 핀", 620, 300 + fy, ink, "left", 18);
+    label("가동측 형판", 128, 302, ONSTEEL, "left", 17, 600);
+    label("코어 →", 116, 256, ink, "right", 19, 600);
+    label("이젝터 핀", 218, 350, ONSTEEL, "left", 16);
+    label("이젝터 플레이트", 390, 419 + ej, ONSTEEL, "center", 15);
+    label("슬라이드 코어", 576 + sx, 226 - (P.open > 0.5 ? 0 : 0), P.open > 0.5 ? ink : ONSTEEL, "center", 17, 600);
+    if (p >= 1 || P.rest) label("취출 제품 · 2캐비티 (측면 언더컷 포함)", 865, 436, ink, "center", 18, 600);
+    if (P.filling && P.cav > 0 && P.cav < 1) label("수지 흐름 →", 116, 198 + fy, "#c2410c", "right", 19, 600);
+    if (P.filling && P.flow < 1) label("← 핫러너로 수지 공급", 524, 203 + fy, "#c2410c", "left", 17, 600);
+    if (!P.rest && P.open > 0.6 && P.lift === 0) label("슬라이드 후퇴 → 언더컷 해제", 690, 200, muted, "left", 17, 600);
+  }
+
+  /* ---------- Product 3D (canvas, no library) and its link to mold parts ---------- */
+  const FEATURES = [
+    { id: "outer", name: "외관면", part: () => "fixed_plate", how: "고정측 형판의 캐비티가 만듭니다" },
+    { id: "rib", name: "리브·보스", part: c => (c === 1 ? "core_insert_01" : "core_insert_02"), how: "코어 인서트가 만듭니다" },
+    { id: "clip", name: "측면 클립 (언더컷)", part: () => "slide_core", how: "슬라이드 코어가 만들고, 형이 열릴 때 빠집니다" },
+    { id: "gate", name: "게이트 자국 2곳", part: () => "hot_runner", how: "핫러너 게이트가 수지를 넣은 자리입니다" },
+    { id: "ejector", name: "이젝터 핀 자국", part: () => "ejector", how: "이젝터 핀이 밀어낸 자리입니다 (아랫면)" }
+  ];
+  const PROD = { yaw: 0.7, pit: -0.55, auto: true, drag: null, cav: 2, hover: null, faces: [] };
+  const PN = [[0, 0, 1], [0, 0, -1], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0]];
+  const PL = (() => { const v = [0.45, 0.8, 0.55], l = Math.hypot(...v); return v.map(a => a / l); })();
+  const hexRGB = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  function moldShape(m) { return m.shape || { w: 3, d: 3, h: 0.5 }; }
+  function productBoxes(sh) {
+    const W = sh.w, D = sh.d, H = sh.h, t = 0.12, B = [];
+    const add = (x, y, z, w, h, d, f) => B.push({ c: [x, y, z], s: [w / 2, h / 2, d / 2], f });
+    add(0, H - t / 2, 0, W, t, D, "outer");
+    add(0, H / 2, D / 2 - t / 2, W, H, t, "outer");
+    add(0, H / 2, -(D / 2 - t / 2), W, H, t, "outer");
+    add(W / 2 - t / 2, H / 2, 0, t, H, D - 2 * t, "outer");
+    add(-(W / 2 - t / 2), H / 2, 0, t, H, D - 2 * t, "outer");
+    add(0, (H - t) / 2, 0, 0.08, H - t, D - 2 * t, "rib");
+    add(-W * 0.3, (H - t) / 2, 0, 0.24, H - t, 0.24, "rib");
+    add(W * 0.3, (H - t) / 2, 0, 0.24, H - t, 0.24, "rib");
+    add(W / 2 + 0.08, H * 0.42, 0, 0.16, 0.16, Math.min(0.7, D * 0.25), "clip");
+    add(-W * 0.27, H + 0.012, 0, 0.18, 0.024, 0.18, "gate");
+    add(W * 0.27, H + 0.012, 0, 0.18, 0.024, 0.18, "gate");
+    add(-W * 0.18, H - t - 0.012, D * 0.25, 0.15, 0.024, 0.15, "ejector");
+    add(W * 0.18, H - t - 0.012, -D * 0.25, 0.15, 0.024, 0.15, "ejector");
+    return B;
+  }
+  function selectedFeature() {
+    const pid = state.partFilter || state.highlightPart;
+    if (!pid) return null;
+    const f = FEATURES.find(x => x.part(PROD.cav) === pid);
+    return f ? f.id : null;
+  }
+  function drawProduct() {
+    const cv = $("prod-canvas");
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = viewer.clientWidth, h = viewer.clientHeight;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    const g = cv.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    const m = currentMold(), sh = moldShape(m);
+    if (PROD.auto && !PROD.drag) PROD.yaw += 0.004;
+    const cy = Math.cos(PROD.yaw), sy = Math.sin(PROD.yaw), cp = Math.cos(PROD.pit), sp = Math.sin(PROD.pit);
+    const T = [0, sh.h / 2, 0], Dd = Math.max(sh.w, sh.d) * 2.4 + 3;
+    const areaW = w - 280;  // leave room for the legend on the right
+    const sc = Math.min(areaW * 1.45, h * 2.0);
+    const rot = v => { const x1 = v[0] * cy - v[2] * sy, z1 = v[0] * sy + v[2] * cy; return [x1, v[1] * cp - z1 * sp, v[1] * sp + z1 * cp]; };
+    const tr = v => { const r = rot([v[0] - T[0], v[1] - T[1], v[2] - T[2]]); r[2] += Dd; return r; };
+    const pr = q => [areaW * 0.52 + q[0] / q[2] * sc, h * 0.56 - q[1] / q[2] * sc];
+    const base = hexRGB(m.material === "gf30" ? "#7f899b" : "#bcc3cf");
+    const mark = hexRGB("#353c4a");
+    const sel = selectedFeature();
+    const accent = hexRGB("#2f74f0"), hov = hexRGB("#8fb4f5");
+    const F = [];
+    const fromBelow = PROD.pit > 0;
+    productBoxes(sh).forEach(b => { if (fromBelow ? b.f === "gate" : (b.f === "rib" || b.f === "ejector")) return; PN.forEach(n => {
+      const k = n[0] ? 0 : n[1] ? 1 : 2, u = (k + 1) % 3, ww = (k + 2) % 3, s = n[k];
+      const cen = b.c.slice(); cen[k] += s * b.s[k];
+      const fc = tr(cen), rn = rot(n);
+      if (rn[0] * fc[0] + rn[1] * fc[1] + rn[2] * fc[2] >= 0) return;
+      const vs = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, bb]) => { const v = cen.slice(); v[u] += a * b.s[u]; v[ww] += bb * b.s[ww]; return pr(tr(v)); });
+      const dl = n[0] * PL[0] + n[1] * PL[1] + n[2] * PL[2];
+      const shd = Math.min(1.1, 0.62 + 0.4 * Math.max(0, dl) + 0.22 * Math.max(0, -dl));
+      let col = (b.f === "gate" || b.f === "ejector") ? mark : base;
+      if (b.f === sel) col = accent; else if (b.f === PROD.hover) col = hov;
+      F.push({ z: fc[2], vs, col: col.map(v => Math.round(v * shd)), f: b.f });
+    }); });
+    F.sort((a, b) => b.z - a.z);
+    g.lineJoin = "round";
+    F.forEach(f => {
+      g.beginPath(); f.vs.forEach((v, i) => i ? g.lineTo(v[0], v[1]) : g.moveTo(v[0], v[1])); g.closePath();
+      g.fillStyle = `rgb(${f.col})`; g.fill();
+      g.strokeStyle = "rgba(10, 20, 40, 0.35)"; g.lineWidth = 1; g.stroke();
+    });
+    // Outline and call-out for the selected feature
+    const selF = F.filter(f => f.f === sel);
+    if (selF.length) {
+      g.strokeStyle = "#2f74f0"; g.lineWidth = 3;
+      selF.forEach(f => { g.beginPath(); f.vs.forEach((v, i) => i ? g.lineTo(v[0], v[1]) : g.moveTo(v[0], v[1])); g.closePath(); g.stroke(); });
+      const pts = selF.flatMap(f => f.vs);
+      const cx = pts.reduce((t, v) => t + v[0], 0) / pts.length, cy2 = pts.reduce((t, v) => t + v[1], 0) / pts.length;
+      const ft = FEATURES.find(x => x.id === sel);
+      const text = `${ft.name} ← ${PART_NAME[ft.part(PROD.cav)]}`;
+      g.font = '600 13px "IBM Plex Sans KR", "Malgun Gothic", sans-serif';
+      const tw = g.measureText(text).width + 20;
+      const lx = Math.min(Math.max(cx - tw / 2, 8), areaW - tw - 8), ly = Math.max(cy2 - 70, 70);
+      g.strokeStyle = "#2f74f0"; g.lineWidth = 1.5;
+      g.beginPath(); g.moveTo(cx, cy2); g.lineTo(lx + tw / 2, ly + 28); g.stroke();
+      g.beginPath(); g.arc(cx, cy2, 4, 0, Math.PI * 2); g.fillStyle = "#2f74f0"; g.fill();
+      g.fillStyle = "#2f74f0"; g.beginPath(); g.roundRect ? g.roundRect(lx, ly, tw, 28, 6) : g.rect(lx, ly, tw, 28); g.fill();
+      g.fillStyle = "#ffffff"; g.textBaseline = "middle"; g.textAlign = "left"; g.fillText(text, lx + 10, ly + 14);
+    }
+    PROD.faces = F;
+  }
+  function featureAt(x, y) {
+    for (let i = PROD.faces.length - 1; i >= 0; i--) {
+      const vs = PROD.faces.at(i).vs;
+      let inside = false;
+      for (let a = 0, b = vs.length - 1; a < vs.length; b = a++) {
+        const [xa, ya] = vs.at(a), [xb, yb] = vs.at(b);
+        if ((ya > y) !== (yb > y) && x < (xb - xa) * (y - ya) / (yb - ya) + xa) inside = !inside;
+      }
+      if (inside) return PROD.faces.at(i).f;
+    }
+    return null;
+  }
+  function renderProductPanel() {
+    const m = currentMold();
+    const stats = partStats(moldEvents());
+    const prods = m.products && m.products.length ? m.products : [{ part_no: m.part_no, part_name: m.part_name }];
+    const cavBtns = Array.from({ length: Math.min(m.cavity || 1, 2) }, (_, i) => i + 1)
+      .map(c => `<button type="button" class="chip ${PROD.cav === c ? "on" : ""}" data-cav="${c}">캐비티 #${c}</button>`).join("");
+    $("prod-info").innerHTML = `<div class="pi-name">${prods.map(p => `${esc(p.part_no)} ${esc(p.part_name)}`).join(" · ")}</div>
+      <div class="pi-sub">${esc(m.mold_id)}에서 생산 · ${esc(m.machine || "-")} · ${esc(m.resin || "-")}</div>
+      <div class="pi-btns">${(m.cavity || 1) > 1 ? cavBtns : ""}<button type="button" class="chip" id="prod-flip">${PROD.pit < 0 ? "아랫면 보기" : "윗면 보기"}</button></div>`;
+    const sel = selectedFeature();
+    $("prod-legend").innerHTML = `<div class="pl-title">제품 부위 → 만드는 금형 부위</div>` + FEATURES.map(f => {
+      const pid = f.part(PROD.cav), s = stats[pid];
+      return `<button type="button" class="pl-item ${sel === f.id ? "on" : ""}" data-feat="${f.id}">
+        <span class="pl-f">${esc(f.name)}</span>
+        <span class="pl-p">← ${esc(PART_NAME[pid])}${s ? ` · 이력 ${s.total}건` : ""}</span>
+      </button>`;
+    }).join("") + `<div class="pl-note">부위를 누르면 그 금형 부위의 이력만 보입니다</div>`;
+  }
+  $("prod-info").addEventListener("click", e => {
+    const c = e.target.closest("[data-cav]");
+    if (c) { PROD.cav = Number(c.dataset.cav); renderProductPanel(); return; }
+    if (e.target.closest("#prod-flip")) { PROD.pit = PROD.pit < 0 ? 0.6 : -0.55; renderProductPanel(); }
+  });
+  function pickFeature(fid) {
+    const f = FEATURES.find(x => x.id === fid);
+    if (!f) return;
+    const pid = f.part(PROD.cav);
+    PROD.pit = (fid === "rib" || fid === "ejector") ? 0.6 : -0.55;
+    setPartFilter(state.partFilter === pid ? null : pid);
+    renderProductPanel();
+    if (state.partFilter) toast(`${f.name}: ${f.how}`);
+  }
+  $("prod-legend").addEventListener("click", e => {
+    const b = e.target.closest("[data-feat]");
+    if (b) pickFeature(b.dataset.feat);
+  });
+  (function bindProductCanvas() {
+    const cv = $("prod-canvas");
+    const pos = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+    cv.addEventListener("pointerdown", e => { PROD.drag = { x: e.clientX, y: e.clientY, moved: 0 }; PROD.auto = false; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener("pointermove", e => {
+      if (PROD.drag) {
+        const dx = e.clientX - PROD.drag.x, dy = e.clientY - PROD.drag.y;
+        PROD.drag.moved += Math.abs(dx) + Math.abs(dy);
+        PROD.drag.x = e.clientX; PROD.drag.y = e.clientY;
+        PROD.yaw += dx * 0.01;
+        PROD.pit = Math.max(-1.3, Math.min(1.3, PROD.pit + dy * 0.01));
+      } else if (e.pointerType === "mouse") {
+        const [x, y] = pos(e);
+        const f = featureAt(x, y);
+        if (f !== PROD.hover) { PROD.hover = f; cv.style.cursor = f ? "pointer" : "grab"; }
+      }
+    });
+    cv.addEventListener("pointerup", e => {
+      if (PROD.drag && PROD.drag.moved < 6) { const [x, y] = pos(e); const f = featureAt(x, y); if (f) pickFeature(f); }
+      PROD.drag = null;
+    });
+    cv.addEventListener("pointerleave", () => { PROD.hover = null; });
+  })();
+
+  /* View switch: 3D, section, product */
+  let viewMode = "3d";
+  function setMode(mode) {
+    viewMode = mode;
+    secVisible = mode !== "3d";
+    $("section").hidden = mode !== "sec";
+    $("prod-canvas").hidden = mode !== "prod";
+    $("prod-info").hidden = mode !== "prod";
+    $("prod-legend").hidden = mode !== "prod";
+    $("stagebar").hidden = mode === "prod";
+    viewer.classList.toggle("sec", mode !== "3d");
+    if (three) three.renderer.domElement.style.visibility = mode === "3d" ? "visible" : "hidden";
+    [["view-3d", "3d"], ["view-sec", "sec"], ["view-prod", "prod"]].forEach(([id, m]) => {
+      $(id).classList.toggle("on", mode === m); $(id).setAttribute("aria-pressed", String(mode === m));
+    });
+    $("toggle-open").hidden = mode !== "3d";
+    $("play-cycle").hidden = mode === "prod";
+    viewer.querySelector(".hint").textContent = mode === "sec"
+      ? "단면: 노즐 → 핫러너 매니폴드 → 게이트 4점 → 캐비티 → 형 열림·슬라이드 후퇴 → 취출"
+      : mode === "prod" ? "제품: 드래그 회전 · 부위를 누르면 그 부위를 만드는 금형 부위의 이력만 보기"
+      : "드래그 회전 · 휠 확대 · 부위를 누르면 그 부위 이력만 보기";
+    if (mode === "prod") renderProductPanel();
+  }
+  $("view-3d").addEventListener("click", () => setMode("3d"));
+  $("view-sec").addEventListener("click", () => setMode("sec"));
+  $("view-prod").addEventListener("click", () => setMode("prod"));
+
+  function tick() {
+    const s = cycleTime();
+    if (s != null) {
+      if (s >= STAGES[STAGES.length - 1] + 0.4) endCycle();
+      else showStage(STAGES.findIndex(e => s < e));
+    }
+    if (viewMode === "sec") drawSection(cycleParams(cycleTime()));
+    if (viewMode === "prod") drawProduct();
+    requestAnimationFrame(tick);
+  }
+
+  /* ---------- Guided demo ---------- */
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let tourIdx = -1;
+  let spotEl = null;
+  function spot(id) {
+    if (spotEl) spotEl.classList.remove("spot");
+    spotEl = id ? $(id) : null;
+    if (spotEl) {
+      spotEl.classList.add("spot");
+      spotEl.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+    }
+  }
+  function resetView() {
+    if (state.formOpen) closeForm();
+    state.types = new Set(TYPES.map(t => t.id));
+    state.q = ""; $("q").value = "";
+    state.workBy = "all";
+    state.partFilter = null; state.selectedEvent = null; state.highlightPart = null;
+  }
+  const STEPS = [
+    { title: "불량 발생", body: "도어 트림 커버 측면에 버가 생겼다는 연락이 왔습니다. 해당 금형의 이력 화면을 엽니다.",
+      run() { resetView(); state.moldId = "M-DEMO-01"; $("mold").value = state.moldId; renderAll(); spot("info"); } },
+    { title: "부위로 찾기", body: "3D에서 슬라이드 코어를 누르면 그 부위 이력만 남습니다. 주황 배지는 수정·수리가 2회 이상인 부위입니다.",
+      run() { resetView(); renderAll(); setPartFilter("slide_core"); spot("viewer"); } },
+    { title: "과거 이력 확인", body: "같은 부위를 이미 두 번 수리했습니다. 카드를 펼치면 언제, 왜, 어떻게 고쳤는지와 비용이 보입니다.",
+      run() {
+        if (state.formOpen) closeForm();
+        if (state.partFilter !== "slide_core") setPartFilter("slide_core");
+        const ev = moldEvents().find(e => e.part_id === "slide_core");
+        state.selectedEvent = ev ? ev.event_id : null;
+        state.highlightPart = "slide_core";
+        renderList(); applyHighlight(); refreshBadges(); spot("list");
+      } },
+    { title: "판단", body: "누적 수리비가 재제작 견적의 절반을 넘었고, 금형 노후도도 주의 구간입니다. 수리를 반복하기보다 재제작을 검토할 때입니다.",
+      run() { if (state.formOpen) closeForm(); renderDecide(); spot("decide"); } },
+    { title: "조치 등록", body: "재제작 검토 요청을 이력으로 남깁니다. 저장하면 타임라인 맨 위에 쌓이고, 다음 사람이 이 판단의 근거를 볼 수 있습니다.",
+      run() {
+        openForm();
+        const r = partDecisions(currentMold()).find(x => x.part === "slide_core");
+        $("f-type").value = "other"; syncTypeFields();
+        $("f-type-label").value = "재제작 검토";
+        $("f-title").value = "슬라이드 코어 재제작 검토 요청";
+        $("f-part").value = "slide_core";
+        $("f-reason").value = r ? `수리 ${r.count}회, 누적 수리비 ${wonShort(r.cost)} (재제작 견적의 ${r.ratio != null ? r.ratio.toFixed(0) : "-"}%)` : "";
+        $("f-status").value = "requested";
+        state.highlightPart = "slide_core"; applyHighlight();
+        spot("form");
+      } }
+  ];
+  function showStep(i) {
+    tourIdx = i;
+    const s = STEPS[i];
+    $("tour").hidden = false;
+    $("tour-step").textContent = `STEP ${i + 1} / ${STEPS.length}`;
+    $("tour-dots").innerHTML = STEPS.map((_, k) => `<i class="${k <= i ? "on" : ""}"></i>`).join("");
+    $("tour-title").textContent = s.title;
+    $("tour-body").textContent = s.body;
+    $("tour-prev").disabled = i === 0;
+    $("tour-next").textContent = i === STEPS.length - 1 ? "마치기" : "다음";
+    s.run();
+  }
+  function endTour() {
+    tourIdx = -1;
+    $("tour").hidden = true;
+    spot(null);
+  }
+  $("tour-btn").addEventListener("click", () => showStep(0));
+  $("tour-next").addEventListener("click", () => { if (tourIdx >= STEPS.length - 1) endTour(); else showStep(tourIdx + 1); });
+  $("tour-prev").addEventListener("click", () => { if (tourIdx > 0) showStep(tourIdx - 1); });
+  $("tour-end").addEventListener("click", endTour);
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && tourIdx >= 0) endTour(); });
+
+  /* ---------- Boot ---------- */
+  function boot() {
+    renderMoldSelect();
+    try { initThree(); } catch (err) {
+      const f = document.createElement("div");
+      f.className = "fallback";
+      f.textContent = "3D 화면을 그리지 못했습니다. 아래 부위 목록을 눌러도 이력을 걸러 볼 수 있습니다.";
+      viewer.appendChild(f);
+      three = null;
+    }
+    renderAll();
+    tick();
+  }
+  function useData(d) {
+    data = normalize(clone(d));
+    if (!Array.isArray(data.labels)) data.labels = clone(SEED.labels);
+    if (!data.molds.some(x => x.mold_id === state.moldId)) state.moldId = data.molds[0].mold_id;
+  }
+  const validHist = d => d && Array.isArray(d.molds) && Array.isArray(d.events);
+  if (!EMBED) boot();
+  else {
+    document.documentElement.classList.add("embed");
+    document.body.style.visibility = "hidden";
+    $("foot-note").textContent = "등록한 이력은 금형 대시보드 클라우드에 자동 저장되고 팀원과 함께 봅니다.";
+    let started = false;
+    window.addEventListener("message", e => {
+      if (e.origin !== location.origin || e.source !== parent) return;
+      const m = e.data || {};
+      if (m.type !== "hist-data") return;
+      if (!started) {
+        started = true;
+        if (validHist(m.data)) { useData(m.data); lastSent = JSON.stringify(m.data); }
+        if (m.who && !$("f-owner").value) $("f-owner").value = m.who;
+        boot();
+        document.body.style.visibility = "";
+      } else if (validHist(m.data)) {
+        const j = JSON.stringify(m.data);
+        if (j === lastSent) return;
+        lastSent = j; useData(m.data);
+        renderMoldSelect(); renderAll();
+      }
+    });
+    parent.postMessage({ type: "hist-ready" }, location.origin);
+  }
+})();
+</script>
+</body>
+</html>

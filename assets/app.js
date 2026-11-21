@@ -102,10 +102,19 @@ function seedProject() {
   };
 }
 
+// 예전 방식(행마다 확정·지급금액) → 금형 단위 확정 제작비·실제 지급액으로 한 번만 옮김
+function legacyCostSum(costs, f) {
+  let s = 0, any = false;
+  (costs || []).forEach(c => { if (c && COST_CONFIRMED.includes(c.status) && c.status !== '무상' && isNum(c[f])) { s += c[f]; any = true; } });
+  return any ? s : null;
+}
 function normalizeProject(p) {
-  const d = Object.assign({ dwgNo: '', model: '', moldType: '', cavities: '', material: '', resin: '', startDate: '', endDate: '', status: '', designer: '', maker: '', manager: '', summary: '', folder: '', imagePath: '', imageFileId: null, viewerPath: '', createdAt: nowISO(), updatedAt: nowISO(), costs: [], logs: [], docs: [], vendorInfo: {} }, p);
+  p = Object.assign({}, p);
+  if (!('costFinal' in p)) p.costFinal = legacyCostSum(p.costs, 'confirmed');
+  if (!('costPaid' in p)) p.costPaid = legacyCostSum(p.costs, 'paid');
+  const d = Object.assign({ dwgNo: '', model: '', moldType: '', cavities: '', material: '', resin: '', startDate: '', endDate: '', status: '', designer: '', maker: '', manager: '', summary: '', folder: '', imagePath: '', imageFileId: null, viewerPath: '', createdAt: nowISO(), updatedAt: nowISO(), costs: [], logs: [], docs: [], vendorInfo: {}, costFinal: null, costPaid: null }, p);
   d.vendorInfo = (d.vendorInfo && typeof d.vendorInfo === 'object' && !Array.isArray(d.vendorInfo)) ? d.vendorInfo : {};
-  d.costs = (d.costs || []).map(c => Object.assign({ id: uid('c'), item: '', vendor: '', quote: null, confirmed: null, paid: null, vat: '미확인', status: '견적 요청', note: '' }, c));
+  d.costs = (d.costs || []).map(c => Object.assign({ id: uid('c'), item: '', vendor: '', quote: null, confirmed: null, paid: null, vat: '미확인', status: '견적 요청', note: '', quoteFileId: null }, c));
   d.logs = (d.logs || []).map(l => Object.assign({ id: uid('l'), date: '', title: '', category: '기타', vendor: '', detail: '', action: '', state: '참고', files: '', createdAt: nowISO() }, l));
   d.docs = (d.docs || []).map(x => Object.assign({ id: uid('d'), type: '기타 자료', name: '', desc: '', mode: 'link', path: '', fileId: null, date: today() }, x));
   return d;
@@ -241,6 +250,7 @@ function diffSummary(a, b) {
   if (js(a.cloudFiles || {}) !== js(b.cloudFiles || {})) out.push('연결 파일 업로드');
   if (js(a.fileMeta || {}) !== js(b.fileMeta || {})) out.push('첨부파일 변경');
   if (js(a.inventory || null) !== js(b.inventory || null)) out.push('공구·부품 재고 변경');
+  if (js(a.repairHist || null) !== js(b.repairHist || null)) out.push('금형수리이력 변경');
   return out.join(' / ');
 }
 // 두 사람이 동시에 저장했을 때: 금형(도번)·일정 단위로 합침. 같은 금형을 둘 다 고쳤으면 내 변경 우선
@@ -269,13 +279,22 @@ function merge3(base, mine, theirs) {
       out.inventory = { tools: mergeList(bi.tools, mi.tools, ti.tools, 'id', '공구 재고'), parts: mergeList(bi.parts, mi.parts, ti.parts, 'id', '부품 재고'), logs: mergeList(bi.logs, mi.logs, ti.logs, 'id', '입출고 기록') };
     }
   }
+  // 금형수리이력: 금형(mold_id)·이력(event_id)별로 합침
+  if (js(mine.repairHist) !== js(base.repairHist)) {
+    if (!theirs.repairHist || js(theirs.repairHist) === js(base.repairHist)) out.repairHist = mine.repairHist;
+    else if (mine.repairHist) {
+      const bh = base.repairHist || {}, mh = mine.repairHist, th = theirs.repairHist;
+      out.repairHist = { molds: mergeList(bh.molds, mh.molds, th.molds, 'mold_id', '수리이력 금형'), events: mergeList(bh.events, mh.events, th.events, 'event_id', '수리이력'),
+        labels: [...new Set([...(th.labels || []), ...(mh.labels || [])])] };
+    }
+  }
   const map = f => {
     const b = base[f] || {}, m = mine[f] || {}, t = theirs[f] || {}, o = {};
     new Set([...Object.keys(b), ...Object.keys(m), ...Object.keys(t)]).forEach(k => { const v = js(m[k]) !== js(b[k]) ? m[k] : t[k]; if (v !== undefined) o[k] = v; });
     out[f] = o;
   };
   map('fileMeta'); map('cloudFiles');
-  Object.keys(mine).forEach(k => { if (!['projects', 'schedules', 'fileMeta', 'cloudFiles', 'inventory', 'rev'].includes(k) && js(mine[k]) !== js(base[k])) out[k] = mine[k]; });
+  Object.keys(mine).forEach(k => { if (!['projects', 'schedules', 'fileMeta', 'cloudFiles', 'inventory', 'repairHist', 'rev'].includes(k) && js(mine[k]) !== js(base[k])) out[k] = mine[k]; });
   return { merged: out, conflicts: [...new Set(conflicts)] };
 }
 async function push() {
@@ -335,7 +354,8 @@ function busyUI() {
   return !!$('#modalRoot .mback') || !!(a && a.closest && a.closest('#main') && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
 }
 function rerender() {
-  if ($('#invFrame')) { applySettings(); return sendInv(); }   // 재고 화면은 다시 그리지 않고 새 데이터만 전달
+  if ($('#invFrame')) { applySettings(); return sendInv(); }
+  if ($('#repFrame')) { applySettings(); return sendRep(); }   // 수리이력 화면도 새 데이터만 전달   // 재고 화면은 다시 그리지 않고 새 데이터만 전달
   const main = $('#main'), y = main ? main.scrollTop : 0, wy = window.scrollY;
   applySettings(); route();
   if (main) main.scrollTop = y; window.scrollTo(0, wy);
@@ -431,12 +451,18 @@ function calcCosts(costs) {
   }
   return r;
 }
+// 견적비 = 견적금액(VAT 별도) 합계 (자동), 확정 제작비·실제 지급액 = 직접 입력
+function projCost(p) {
+  const r = { quote: 0, quotes: 0, confirmed: num(p.costFinal), paid: num(p.costPaid) };
+  (p.costs || []).forEach(c => { if (isNum(c.quote)) { r.quote += c.quote; r.quotes++; } });
+  return r;
+}
 function calcAll() {
-  const t = { total: DB.projects.length, active: 0, done: 0, confirmed: 0, pending: 0, paid: 0 };
+  const t = { total: DB.projects.length, active: 0, done: 0, confirmed: 0, quote: 0, paid: 0 };
   for (const p of DB.projects) {
     if (['설계 중', '제작 준비', '제작 중', '수정·보완'].includes(p.status)) t.active++;
     if (p.status === '제작 완료') t.done++;
-    const c = calcCosts(p.costs); t.confirmed += c.confirmed; t.pending += c.pending; t.paid += c.paid;
+    const c = projCost(p); t.confirmed += c.confirmed; t.quote += c.quote; t.paid += c.paid;
   }
   return t;
 }
@@ -445,7 +471,7 @@ function calcAll() {
 async function gcFiles() {
   try {
     const used = new Set();
-    DB.projects.forEach(p => { if (p.imageFileId) used.add(p.imageFileId); p.docs.forEach(d => { if (d.fileId) used.add(d.fileId); }); Object.values(p.vendorInfo || {}).forEach(v => { if (v && v.quoteFileId) used.add(v.quoteFileId); }); });
+    DB.projects.forEach(p => { if (p.imageFileId) used.add(p.imageFileId); p.docs.forEach(d => { if (d.fileId) used.add(d.fileId); }); p.costs.forEach(c => { if (c.quoteFileId) used.add(c.quoteFileId); }); Object.values(p.vendorInfo || {}).forEach(v => { if (v && v.quoteFileId) used.add(v.quoteFileId); }); });
     const all = await FileStore.all(), gone = all.filter(f => !used.has(f.id));
     await Promise.all(gone.map(f => FileStore.del(f.id)));
     if (gone.length) save();
@@ -473,7 +499,9 @@ function sanitizeProject(raw, i) {
   P.imageFileId = raw.imageFileId ? str(raw.imageFileId) : null;
   if (!P.createdAt) delete P.createdAt; if (!P.updatedAt) delete P.updatedAt;
   P.costs = objs('costs').map(c => ({ id: str(c.id) || uid('c'), item: str(c.item), vendor: str(c.vendor), quote: num(c.quote), confirmed: num(c.confirmed), paid: num(c.paid),
-    vat: VATS.includes(c.vat) ? c.vat : '미확인', status: COST_STATUSES.includes(c.status) ? c.status : '확인 필요', note: str(c.note) }));
+    vat: VATS.includes(c.vat) ? c.vat : '미확인', status: COST_STATUSES.includes(c.status) ? c.status : '확인 필요', note: str(c.note), quoteFileId: c.quoteFileId ? str(c.quoteFileId) : null }));
+  if ('costFinal' in raw) P.costFinal = num(raw.costFinal);
+  if ('costPaid' in raw) P.costPaid = num(raw.costPaid);
   P.logs = objs('logs').map(l => ({ id: str(l.id) || uid('l'), date: str(l.date), title: str(l.title), category: LOG_CATS.includes(l.category) ? l.category : '기타', vendor: str(l.vendor),
     detail: str(l.detail), action: str(l.action), state: LOG_STATES.includes(l.state) ? l.state : '참고', files: str(l.files), createdAt: str(l.createdAt) || nowISO() }));
   P.docs = objs('docs').map(x => ({ id: str(x.id) || uid('d'), type: DOC_TYPES.includes(x.type) ? x.type : '기타 자료', name: str(x.name), desc: str(x.desc),
@@ -707,6 +735,7 @@ function route() {
   else if (view === 'docs') html = viewDocs();
   else if (view === 'settings') html = viewSettings();
   else if (view === 'inventory') html = viewInventory();
+  else if (view === 'repair') html = viewRepair();
   else html = viewProjects(true);
   main.innerHTML = `<div class="fade">${html}</div>`;
   hydrateStoredImages(main);
@@ -745,6 +774,32 @@ function mdToHtml(md) {
   });
   close(); return html;
 }
+/* ---------------- 금형수리이력 (repair.html을 안에 띄우고 데이터는 DB.repairHist에 저장) ---------------- */
+function viewRepair() {
+  return `<div class="inv-head"><div><h2 class="inv-t">금형수리이력</h2><div class="muted">수리·치수수정·설계변경 이력을 3D 부위와 함께 남기고, 계속 고칠지 다시 만들지 판단합니다. 입력한 내용은 팀원과 함께 보고 자동 저장됩니다.</div></div>
+    <button class="btn ghost sm" data-act="repPrd">기획서(PRD) 보기</button></div>
+    <iframe id="repFrame" class="inv-frame rep-frame" src="repair.html?v=1" title="금형수리이력"></iframe>`;
+}
+function sendRep() {
+  const f = $('#repFrame'); if (!f || !f.contentWindow || !DB) return;
+  f.contentWindow.postMessage({ type: 'hist-data', data: DB.repairHist ? jclone(DB.repairHist) : null, who: who() }, location.origin);
+}
+window.addEventListener('message', e => {
+  const f = $('#repFrame');
+  if (e.origin !== location.origin || !f || e.source !== f.contentWindow || !DB) return;
+  const m = e.data || {};
+  if (m.type === 'hist-ready') return sendRep();
+  if (m.type === 'hist-save' && m.data && Array.isArray(m.data.molds) && Array.isArray(m.data.events)) {
+    if (READONLY) { toast(READONLY, 'err'); return sendRep(); }
+    DB.repairHist = jclone(m.data); save('금형수리이력');
+  }
+});
+async function showRepPrd() {
+  let md;
+  try { const r = await fetch('docs/repair_prd.md?v=1', { cache: 'no-cache' }); if (!r.ok) throw new Error(r.status); md = await r.text(); }
+  catch (e) { return toast('기획서를 불러오지 못했습니다: ' + e.message, 'err'); }
+  modal('금형수리이력 기획서 (PRD)', `<div class="md">${mdToHtml(md)}</div>`, [{ text: '닫기' }]);
+}
 async function showInvPrd() {
   let md;
   try { const r = await fetch('docs/inventory_prd.md?v=1', { cache: 'no-cache' }); if (!r.ok) throw new Error(r.status); md = await r.text(); }
@@ -778,7 +833,7 @@ function filteredProjects() {
     dwgAsc: (a, b) => a.dwgNo.localeCompare(b.dwgNo, 'ko', { numeric: true }),
     start: (a, b) => (b.startDate || '').localeCompare(a.startDate || ''),
     model: (a, b) => a.model.localeCompare(b.model, 'ko'),
-    cost: (a, b) => calcCosts(b.costs).confirmed - calcCosts(a.costs).confirmed,
+    cost: (a, b) => projCost(b).confirmed - projCost(a).confirmed,
   };
   return arr.sort(S[L.sort] || S.updated);
 }
@@ -792,13 +847,13 @@ function projectListHTML() {
   let body;
   if (L.mode === 'table') {
     body = `<div class="tblwrap"><table class="tbl"><thead><tr><th></th><th>도번</th><th>모델명</th><th>상태</th><th>작업 시작</th><th>작업 완료</th><th>제작업체</th><th class="r">확정 제작비</th><th>최종 수정</th></tr></thead><tbody>
-      ${rows.map(p => { const c = calcCosts(p.costs); return `<tr class="click" data-open="${esc(p.dwgNo)}">
+      ${rows.map(p => { const c = projCost(p); return `<tr class="click" data-open="${esc(p.dwgNo)}">
         <td><div class="tmini">${thumbHTML(p)}</div></td><td class="mono" style="color:var(--ac)">${esc(p.dwgNo)}</td><td><b>${esc(p.model)}</b></td><td>${badge(p.status)}</td>
         <td>${esc(p.startDate) || '<span class="muted">—</span>'}</td><td>${esc(p.endDate) || '<span class="muted">—</span>'}</td><td>${esc(p.maker) || '<span class="muted">—</span>'}</td>
         <td class="r money">${won(c.confirmed)}</td><td class="muted">${fmtDT(p.updatedAt)}</td></tr>`; }).join('')}
       </tbody></table></div>`;
   } else {
-    body = `<div class="pgrid">${rows.map(p => { const c = calcCosts(p.costs); return `<div class="pcard" data-open="${esc(p.dwgNo)}">
+    body = `<div class="pgrid">${rows.map(p => { const c = projCost(p); return `<div class="pcard" data-open="${esc(p.dwgNo)}">
       <div class="thumb">${thumbHTML(p)}<span class="st">${badge(p.status)}</span></div>
       <div class="pbody"><div class="pno">${esc(p.dwgNo)}</div><div class="pname">${esc(p.model) || '<span class="muted">모델명 미입력</span>'}</div>
         <div class="pmeta"><span>작업 기간</span><span>${esc(p.startDate) || '—'} ~ ${esc(p.endDate) || '—'}</span><span>제작업체</span><span>${esc(p.maker) || '—'}</span></div>
@@ -971,7 +1026,7 @@ function viewDetail(p, tab) {
   <div id="tabBody" data-id="${esc(p.dwgNo)}">${body}</div>`;
 }
 function tabOverview(p) {
-  const c = calcCosts(p.costs);
+  const c = projCost(p);
   const important = sortedLogs(p).filter(l => l.state === '미해결' || l.state === '진행 중' || (l.category === '문제 발생' && l.state !== '해결'));
   const solved = sortedLogs(p).filter(l => l.state === '해결');
   const F = [['도번', p.dwgNo], ['모델명', p.model], ['금형 종류', p.moldType], ['캐비티 수', p.cavities], ['금형 재질', p.material], ['수지', p.resin],
@@ -982,8 +1037,10 @@ function tabOverview(p) {
     <div class="panel"><h3>금형 개요</h3><div class="pre" style="line-height:1.7;color:var(--tx2)">${p.summary ? esc(p.summary) : '<span class="empty-v">미입력</span>'}</div></div>
   </div><div>
     <div class="panel"><h3>제작비 요약 <a href="#/project/${encodeURIComponent(p.dwgNo)}/costs" style="font-size:12px;font-weight:500">상세 ›</a></h3>
-      <div class="kv"><div>확정 제작비</div><div class="money" style="color:var(--ac)">${won(c.confirmed)}</div><div>실제 지급액</div><div class="money">${won(c.paid)}</div><div>미지급 확정금액</div><div class="money">${won(c.unpaid)}</div><div>보류·미확정 견적</div><div class="money" style="color:var(--warn)">${won(c.pending)}</div></div>
-      ${c.missing ? `<div class="note">금액 미입력 항목 ${c.missing}건</div>` : ''}</div>
+      <div class="csum">
+        <div class="cs"><span>견적비 <em>VAT 별도</em></span><b>${won(c.quote)}</b></div>
+        <div class="cs main"><span>확정 제작비</span><b>${isNum(p.costFinal) ? won(c.confirmed) : '<i>미입력</i>'}</b></div>
+        <div class="cs"><span>실제 지급액</span><b>${isNum(p.costPaid) ? won(c.paid) : '<i>미입력</i>'}</b></div></div></div>
     <div class="panel"><h3>주요 특이사항 <a href="#/project/${encodeURIComponent(p.dwgNo)}/history" style="font-size:12px;font-weight:500">전체 이력 ›</a></h3>
       ${important.length ? important.map(l => `<div class="issue" data-go="#/project/${encodeURIComponent(p.dwgNo)}/history"><span class="badge ${LOG_BADGE[l.state]}">${esc(l.state)}</span><div><div class="it">${esc(l.title)}</div><div class="im">${esc(l.category)} · ${esc(l.vendor || '업체 미지정')} · ${esc(l.date || '날짜 미입력')}</div></div></div>`).join('') : '<div class="muted">현재 해결 중인 문제 없음</div>'}
       ${solved.length ? `<div class="issub">해결된 문제 이력 <span>${solved.length}건</span></div>${solved.map(l => `<div class="issue done" data-go="#/project/${encodeURIComponent(p.dwgNo)}/history"><span class="badge ${LOG_BADGE[l.state]}">해결</span><div><div class="it">${esc(l.title)}</div><div class="im">${esc(l.category)} · ${esc(l.vendor || '업체 미지정')} · ${esc(l.date || '날짜 미입력')}</div>${l.action ? `<div class="ia">조치: ${esc(l.action)}</div>` : ''}</div></div>`).join('')}` : ''}</div>
@@ -996,29 +1053,29 @@ function costRow(c) {
     <td><input data-f="item" value="${esc(c.item)}" placeholder="항목"></td>
     <td><input data-f="vendor" value="${esc(c.vendor)}" placeholder="업체명"></td>
     <td><input class="num" data-f="quote" data-money value="${m(c.quote)}" placeholder="—"></td>
-    <td><input class="num" data-f="confirmed" data-money value="${m(c.confirmed)}" placeholder="—"></td>
-    <td><input class="num" data-f="paid" data-money value="${m(c.paid)}" placeholder="—"></td>
-    <td><select data-f="vat">${opt(VATS, c.vat)}</select></td>
-    <td><select data-f="status">${opt(COST_STATUSES, c.status)}</select></td>
+    <td>${quoteCell(c)}</td>
     <td><input data-f="note" value="${esc(c.note)}" placeholder="비고" title="${esc(c.note)}"></td>
     <td class="c"><button class="btn icon sm danger" data-act="delCost" data-cid="${esc(c.id)}" title="행 삭제">✕</button></td></tr>`;
 }
 function costTotalsHTML(p) {
-  const c = calcCosts(p.costs);
-  return `<div class="tot"><div class="k">전체 견적금액</div><div class="v">${won(c.quote)}</div></div>
-    <div class="tot main"><div class="k">확정 제작비</div><div class="v">${won(c.confirmed)}</div></div>
-    <div class="tot"><div class="k">실제 지급액</div><div class="v">${won(c.paid)}</div></div>
-    <div class="tot"><div class="k">미지급 확정금액</div><div class="v">${won(c.unpaid)}</div></div>
-    <div class="tot pend"><div class="k">보류·미확정 견적금액</div><div class="v">${won(c.pending)}</div></div>`;
+  const c = projCost(p), m = v => isNum(v) ? v.toLocaleString('ko-KR') : '';
+  return `<div class="tot"><div class="k">견적비 <span>VAT 별도 · 자동 합계</span></div><div class="v" id="costQuoteSum">${won(c.quote)}</div></div>
+    <div class="tot main"><div class="k">확정 제작비 <span>직접 입력</span></div><div class="totin"><b>₩</b><input class="num" data-pf="costFinal" data-money value="${m(p.costFinal)}" placeholder="금액 입력"></div></div>
+    <div class="tot"><div class="k">실제 지급액 <span>직접 입력</span></div><div class="totin"><b>₩</b><input class="num" data-pf="costPaid" data-money value="${m(p.costPaid)}" placeholder="금액 입력"></div></div>`;
+}
+function quoteCell(c) {
+  const id = esc(c.id), fid = c.quoteFileId, m = fid ? (DB.fileMeta || {})[fid] : null;
+  return fid ? `<div class="qcell"><button class="btn sm qbtn" data-act="viewQuote" data-cid="${id}" title="${esc(m ? m.name : '견적서')}">📄 견적서 보기</button><button class="btn icon sm" data-act="upQuote" data-cid="${id}" title="다른 파일로 바꾸기">⟳</button><button class="btn icon sm danger" data-act="delQuote" data-cid="${id}" title="견적서 지우기">✕</button></div>`
+    : `<button class="btn sm qadd" data-act="upQuote" data-cid="${id}">＋ PDF 올리기</button>`;
 }
 function tabCosts(p) {
   return `<div class="panel"><h3>제작비 및 견적 <span><button class="btn sm pri" data-act="addCost">＋ 행 추가</button></span></h3>
-    <div class="tblwrap"><table class="tbl ctbl"><thead><tr><th style="width:15%">항목</th><th style="width:15%">업체명</th><th class="r" style="width:11%">견적금액 (₩)</th><th class="r" style="width:11%">확정금액 (₩)</th><th class="r" style="width:11%">지급금액 (₩)</th><th style="width:8%">VAT</th><th style="width:9%">상태</th><th>비고</th><th style="width:40px"></th></tr></thead>
+    <div class="tblwrap"><table class="tbl ctbl"><thead><tr><th style="width:19%">항목</th><th style="width:17%">업체명</th><th class="r" style="width:16%">견적금액 (₩, VAT 별도)</th><th style="width:19%">견적서</th><th>비고</th><th style="width:40px"></th></tr></thead>
     <tbody id="costBody">${p.costs.map(costRow).join('') || ''}</tbody></table>${p.costs.length ? '' : '<div class="empty">제작비 항목이 없습니다. ‘행 추가’를 누르세요.</div>'}</div>
     <div class="totals" id="costTotals">${costTotalsHTML(p)}</div>
-    <div class="note">· 확정 제작비 = 상태가 <b>확정 / 일부 지급 / 지급 완료</b>인 행의 확정금액 합계 (무상은 0원) · 실제 지급액 = 같은 행들의 지급금액 합계<br>
-    · <b>견적 요청 / 견적 접수 / 보류 / 확인 필요</b> 상태의 금액은 확정 제작비·실제 지급액에 합산하지 않고 ‘보류·미확정 견적금액’에만 표시합니다.<br>
-    · VAT는 표시만 하며 자동 계산하지 않습니다. 금액은 입력한 그대로 합산합니다. 입력 즉시 자동 저장됩니다.</div></div>`;
+    <div class="note">· 견적금액은 <b>VAT 별도</b> 금액으로 적습니다. 견적비는 견적금액 합계로 자동 계산됩니다.<br>
+    · 확정 제작비와 실제 지급액은 위 칸에 직접 입력합니다.<br>
+    · 견적서 PDF를 올리면 <b>견적서 보기</b>로 대시보드 안에서 바로 열립니다. 입력 즉시 자동 저장됩니다.</div></div>`;
 }
 function sortedLogs(p) {
   return [...p.logs].sort((a, b) => {
@@ -1060,12 +1117,11 @@ function viewCosts() {
   const rows = [];
   DB.projects.forEach(p => p.costs.forEach(c => rows.push({ p, c })));
   return `<div class="page-h"><div><h1>제작비 관리</h1><div class="sub">모든 금형의 제작비 행 모음 · 수정은 각 금형의 ‘제작비·견적’ 탭에서</div></div></div>
-  <div class="totals" style="margin:0 0 18px">${(() => { const t = { quote: 0, confirmed: 0, paid: 0, unpaid: 0, pending: 0 }; DB.projects.forEach(p => { const c = calcCosts(p.costs); for (const k in t) t[k] += c[k]; }); return `
-    <div class="tot"><div class="k">전체 견적금액</div><div class="v">${won(t.quote)}</div></div><div class="tot main"><div class="k">확정 제작비</div><div class="v">${won(t.confirmed)}</div></div>
-    <div class="tot"><div class="k">실제 지급액</div><div class="v">${won(t.paid)}</div></div><div class="tot"><div class="k">미지급 확정금액</div><div class="v">${won(t.unpaid)}</div></div>
-    <div class="tot pend"><div class="k">보류·미확정 견적금액</div><div class="v">${won(t.pending)}</div></div>`; })()}</div>
-  <div class="tblwrap"><table class="tbl"><thead><tr><th>금형</th><th>항목</th><th>업체</th><th class="r">견적</th><th class="r">확정</th><th class="r">지급</th><th>VAT</th><th>상태</th><th>비고</th></tr></thead><tbody>
-  ${rows.map(({ p, c }) => `<tr class="click" data-go="#/project/${encodeURIComponent(p.dwgNo)}/costs"><td class="mono" style="color:var(--ac)">${esc(dispName(p))}</td><td>${esc(c.item)}</td><td>${esc(c.vendor)}</td><td class="r">${won(c.quote)}</td><td class="r money">${won(c.confirmed)}</td><td class="r">${won(c.paid)}</td><td>${esc(c.vat)}</td><td><span class="badge ${COST_CLS[c.status]}">${esc(c.status)}</span></td><td class="muted">${esc(c.note)}</td></tr>`).join('') || '<tr><td colspan="9" class="empty">제작비 항목 없음</td></tr>'}
+  <div class="totals t3" style="margin:0 0 18px">
+    <div class="tot"><div class="k">견적비 <span>VAT 별도</span></div><div class="v">${won(all.quote)}</div></div><div class="tot main"><div class="k">확정 제작비</div><div class="v">${won(all.confirmed)}</div></div>
+    <div class="tot"><div class="k">실제 지급액</div><div class="v">${won(all.paid)}</div></div></div>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th>금형</th><th>항목</th><th>업체</th><th class="r">견적금액 (VAT 별도)</th><th class="c">견적서</th><th>비고</th></tr></thead><tbody>
+  ${rows.map(({ p, c }) => `<tr class="click" data-go="#/project/${encodeURIComponent(p.dwgNo)}/costs"><td class="mono" style="color:var(--ac)">${esc(dispName(p))}</td><td>${esc(c.item)}</td><td>${esc(c.vendor)}</td><td class="r money">${won(c.quote)}</td><td class="c">${c.quoteFileId ? '<span class="tag">📄 첨부</span>' : '<span class="muted">—</span>'}</td><td class="muted">${esc(c.note)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">제작비 항목 없음</td></tr>'}
   </tbody></table></div>
   <div class="note">2단계 예정: 업체별 견적 비교, 연도·월별 제작비 통계 차트.</div>`;
 }
@@ -1088,41 +1144,35 @@ function projVendors(p) {
   splitVendors(p.maker).forEach(v => add(v.name, '금형 제작' + (v.note ? ' (' + v.note + ')' : '')));
   p.costs.forEach(c => add(c.vendor, c.item || ''));
   p.logs.forEach(l => { const k = String(l.vendor || '').trim(); if (k && V.has(k)) V.get(k).issues++; });
+  V.forEach(v => { v.quote = 0; v.hasQuote = false; });
+  p.costs.forEach(c => { const v = V.get(String(c.vendor || '').trim()); if (v && isNum(c.quote)) { v.quote += c.quote; v.hasQuote = true; } });
   return [...V.values()].map(v => Object.assign(v, { info: Object.assign({ cost: null, memo: '', quoteFileId: null }, (p.vendorInfo || {})[v.name]) }));
 }
 function vInfo(p, name) { p.vendorInfo = p.vendorInfo || {}; return p.vendorInfo[name] = Object.assign({ cost: null, memo: '', quoteFileId: null }, p.vendorInfo[name]); }
-function quoteCell(p, v) {
-  const id = esc(v.name), fid = v.info.quoteFileId, m = fid ? (DB.fileMeta || {})[fid] : null;
-  return fid ? `<div class="qcell"><button class="btn sm pri" data-act="viewQuote" data-vn="${id}" title="${esc(m ? m.name : '견적서')}">견적서 보기</button><button class="btn icon sm" data-act="upQuote" data-vn="${id}" title="다른 파일로 바꾸기">⟳</button><button class="btn icon sm danger" data-act="delQuote" data-vn="${id}" title="견적서 지우기">✕</button></div>`
-    : `<button class="btn sm" data-act="upQuote" data-vn="${id}">＋ PDF 올리기</button>`;
-}
-function vendorTotal(p) { return projVendors(p).reduce((t, v) => t + num(v.info.cost), 0); }
 function tabVendors(p) {
   const arr = projVendors(p);
   const m = v => isNum(v) ? v.toLocaleString('ko-KR') : '';
   return `<div class="panel"><h3>협력업체 <span class="muted" style="font-size:12px;font-weight:400">정보 수정의 설계 담당자 · 제작 담당 업체, 제작비 행의 업체가 자동으로 들어옵니다</span></h3>
-  <div class="tblwrap"><table class="tbl vtbl"><thead><tr><th style="width:16%">업체명</th><th style="width:20%">담당 항목</th><th class="r" style="width:15%">제작비 (₩)</th><th style="width:19%">견적서</th><th>메모</th></tr></thead><tbody id="vendBody">
+  <div class="tblwrap"><table class="tbl vtbl"><thead><tr><th style="width:18%">업체명</th><th style="width:24%">담당 항목</th><th class="r" style="width:16%">견적금액 (VAT 별도)</th><th>메모</th></tr></thead><tbody id="vendBody">
   ${arr.map(v => `<tr data-vn="${esc(v.name)}"><td><b>${esc(v.name)}</b>${v.issues ? `<div><a class="muted" style="font-size:11.5px" href="#/project/${encodeURIComponent(p.dwgNo)}/history">관련 기록 ${v.issues}건</a></div>` : ''}</td>
     <td>${v.roles.length ? v.roles.map(r => `<span class="tag">${esc(r)}</span>`).join(' ') : '<span class="muted">—</span>'}</td>
-    <td><input class="num" data-vf="cost" data-money value="${m(v.info.cost)}" placeholder="금액 입력"></td>
-    <td>${quoteCell(p, v)}</td>
-    <td><textarea data-vf="memo" rows="1" placeholder="메모">${esc(v.info.memo)}</textarea></td></tr>`).join('') || '<tr><td colspan="5" class="empty">업체가 없습니다. ‘정보 수정’에서 설계 담당자나 제작 담당 업체를 입력하세요.</td></tr>'}
+    <td class="r money">${v.hasQuote ? won(v.quote) : '<span class="muted">—</span>'}</td>
+    <td><textarea data-vf="memo" rows="1" placeholder="메모">${esc(v.info.memo)}</textarea></td></tr>`).join('') || '<tr><td colspan="4" class="empty">업체가 없습니다. ‘정보 수정’에서 설계 담당자나 제작 담당 업체를 입력하세요.</td></tr>'}
   </tbody></table></div>
-  ${arr.length ? `<div class="totals"><div class="tot main"><div class="k">업체 제작비 합계</div><div class="v" id="vendTotal">${won(vendorTotal(p))}</div></div></div>` : ''}
-  <div class="note">· 업체가 여러 곳이면 정보 수정에서 쉼표로 나눠 적으세요. 예) 모아텍 (코어 가공), SG몰드코리아 (몰드베이스)<br>· 견적서는 PDF를 올리면 ‘견적서 보기’로 대시보드 안에서 바로 열립니다. 입력 즉시 자동 저장됩니다.</div></div>`;
+  <div class="note">· 업체가 여러 곳이면 정보 수정에서 쉼표로 나눠 적으세요. 예) 모아텍 (코어 가공), SG몰드코리아 (몰드베이스)<br>· 견적금액과 견적서는 <a href="#/project/${encodeURIComponent(p.dwgNo)}/costs">제작비·견적</a> 탭에서 입력합니다. 메모는 입력 즉시 자동 저장됩니다.</div></div>`;
 }
 function viewVendors() {
   const V = new Map();
   DB.projects.forEach(p => projVendors(p).forEach(v => {
-    if (!V.has(v.name)) V.set(v.name, { name: v.name, roles: new Set(), projects: [], cost: 0, quotes: 0 });
-    const t = V.get(v.name); v.roles.forEach(r => t.roles.add(r.replace(/\s*\(.*\)$/, ''))); t.projects.push(p); t.cost += num(v.info.cost); if (v.info.quoteFileId) t.quotes++;
+    if (!V.has(v.name)) V.set(v.name, { name: v.name, roles: new Set(), projects: [], cost: 0, has: false });
+    const t = V.get(v.name); v.roles.forEach(r => t.roles.add(r.replace(/\s*\(.*\)$/, ''))); t.projects.push(p); t.cost += v.quote; if (v.hasQuote) t.has = true;
   }));
   const arr = [...V.values()].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
-  return `<div class="page-h"><div><h1>협력업체 관리</h1><div class="sub">각 금형의 설계·제작 담당과 제작비 행에서 자동 집계 · 제작비·견적서·메모는 각 금형의 ‘협력업체’ 탭에서 입력</div></div></div>
-  <div class="tblwrap"><table class="tbl"><thead><tr><th>업체명</th><th>담당 항목</th><th>관련 금형</th><th class="r">제작비</th><th class="c">견적서</th></tr></thead><tbody>
+  return `<div class="page-h"><div><h1>협력업체 관리</h1><div class="sub">각 금형의 설계·제작 담당과 제작비 행에서 자동 집계 · 견적금액은 각 금형의 ‘제작비·견적’ 탭에서 입력</div></div></div>
+  <div class="tblwrap"><table class="tbl"><thead><tr><th>업체명</th><th>담당 항목</th><th>관련 금형</th><th class="r">견적금액 합계 (VAT 별도)</th></tr></thead><tbody>
   ${arr.map(v => `<tr><td><b>${esc(v.name)}</b></td><td>${[...v.roles].filter(Boolean).map(r => `<span class="tag">${esc(r)}</span>`).join(' ') || '<span class="muted">—</span>'}</td>
     <td>${v.projects.map(p => `<a href="#/project/${encodeURIComponent(p.dwgNo)}/vendors">${esc(dispName(p))}</a>`).join(', ')}</td>
-    <td class="r money">${v.cost ? won(v.cost) : '—'}</td><td class="c">${v.quotes ? v.quotes + '건' : '—'}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">업체 데이터 없음</td></tr>'}
+    <td class="r money">${v.has ? won(v.cost) : '—'}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">업체 데이터 없음</td></tr>'}
   </tbody></table></div><div class="note">금형 이름을 누르면 그 금형의 협력업체 탭으로 갑니다.</div>`;
 }
 function viewDocs() {
@@ -1180,8 +1230,10 @@ async function fillStorageInfo() {
 }
 
 /* ---------------- 견적서 PDF ---------------- */
-function pickQuote(p, name) {
-  if (!p || !name) return;
+function quoteRow(p, cid) { return p && p.costs.find(x => x.id === cid); }
+function quoteName(c) { return [c.vendor, c.item].filter(Boolean).join(' · ') || '견적'; }
+function pickQuote(p, cid) {
+  const c = quoteRow(p, cid); if (!c) return;
   const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'application/pdf,.pdf';
   inp.onchange = async () => {
     const f = inp.files[0]; if (!f) return;
@@ -1189,16 +1241,18 @@ function pickQuote(p, name) {
     toast('견적서 올리는 중…');
     try {
       const id = await FileStore.put(f);
-      const b = snap(); const vi = vInfo(p, name), old = vi.quoteFileId; vi.quoteFileId = id; touch(p);
+      const b = snap(); const row = quoteRow(curProject() || p, cid); if (!row) return;
+      const old = row.quoteFileId; row.quoteFileId = id; touch(curProject() || p);
       if (!save()) { restore(b); return route(); }
       if (old) gcFiles();
-      route(); toast(`${name} 견적서를 올렸습니다`);
+      route(); toast(`${quoteName(row)} 견적서를 올렸습니다`);
     } catch (e) { toast('견적서 올리기 실패: ' + (e.message || e), 'err'); }
   };
   inp.click();
 }
-async function viewQuote(p, name) {
-  const vi = vInfo(p, name), fid = vi.quoteFileId; if (!fid) return;
+async function viewQuote(p, cid) {
+  const c = quoteRow(p, cid), fid = c && c.quoteFileId; if (!fid) return;
+  const name = quoteName(c);
   const m = (DB.fileMeta || {})[fid], fname = m ? m.name : '견적서.pdf';
   const root = modal(`${name} 견적서 · ${fname}`, '<div class="qview"><div class="muted">불러오는 중…</div></div>', [
     { text: '새 탭에서 열기', fn: () => { openStored(fid); return false; } },
@@ -1519,10 +1573,10 @@ document.addEventListener('click', async e => {
       el.innerHTML = st === 'ok' ? '<span style="color:var(--ok)">✔ 클라우드에 올라간 파일입니다.</span>' : st === 'missing' ? '<span style="color:var(--bad)">✖ 클라우드에 없는 파일입니다. 경로를 확인하고 [설정 및 백업 → 연결 파일 올리기]로 올려 주세요.</span>' : '<span style="color:var(--warn)">외부 주소라 확인할 수 없습니다.</span>';
       return;
     }
-    case 'addCost': { const b = snap(); p.costs.push({ id: uid('c'), item: '', vendor: '', quote: null, confirmed: null, paid: null, vat: '미확인', status: '견적 요청', note: '' }); touch(p); if (!save()) { restore(b); return route(); } } route(); { const rows = $$('#costBody tr'); const last = rows[rows.length - 1]; if (last) last.querySelector('input').focus(); } return;
+    case 'addCost': { const b = snap(); p.costs.push({ id: uid('c'), item: '', vendor: '', quote: null, confirmed: null, paid: null, vat: '미확인', status: '견적 요청', note: '', quoteFileId: null }); touch(p); if (!save()) { restore(b); return route(); } } route(); { const rows = $$('#costBody tr'); const last = rows[rows.length - 1]; if (last) last.querySelector('input').focus(); } return;
     case 'delCost': {
       const c = p.costs.find(x => x.id === t.dataset.cid);
-      if (await confirmBox('행 삭제', `<b>${esc(c.item || '(항목 없음)')}</b> / ${esc(c.vendor || '업체 없음')} 행을 삭제할까요?`, '삭제', true)) { const b = snap(); p.costs = p.costs.filter(x => x !== c); touch(p); if (!save()) restore(b); route(); }
+      if (await confirmBox('행 삭제', `<b>${esc(c.item || '(항목 없음)')}</b> / ${esc(c.vendor || '업체 없음')} 행을 삭제할까요?`, '삭제', true)) { const b = snap(); p.costs = p.costs.filter(x => x !== c); touch(p); if (!save()) restore(b); else if (c.quoteFileId) gcFiles(); route(); }
       return;
     }
     case 'addLog': return logForm(p, null);
@@ -1533,11 +1587,11 @@ document.addEventListener('click', async e => {
       return;
     }
     case 'addDoc': return docForm(p);
-    case 'upQuote': return pickQuote(p, t.dataset.vn);
-    case 'viewQuote': return viewQuote(p, t.dataset.vn);
+    case 'upQuote': return pickQuote(p, t.dataset.cid);
+    case 'viewQuote': return viewQuote(p, t.dataset.cid);
     case 'delQuote': {
-      const vi = vInfo(p, t.dataset.vn);
-      if (!vi.quoteFileId || !(await confirmBox('견적서 지우기', `<b>${esc(t.dataset.vn)}</b> 견적서를 지울까요? 클라우드에 올린 파일도 함께 지워집니다.`, '지우기', true))) return;
+      const vi = quoteRow(p, t.dataset.cid);
+      if (!vi || !vi.quoteFileId || !(await confirmBox('견적서 지우기', `<b>${esc(quoteName(vi))}</b> 견적서를 지울까요? 클라우드에 올린 파일도 함께 지워집니다.`, '지우기', true))) return;
       const b = snap(); vi.quoteFileId = null; touch(p); if (!save()) { restore(b); return route(); } gcFiles(); route(); return toast('견적서를 지웠습니다');
     }
     case 'openDoc': case 'dlDoc': {
@@ -1554,6 +1608,7 @@ document.addEventListener('click', async e => {
     }
     case 'export': return exportJSON();
     case 'invPrd': return showInvPrd();
+    case 'repPrd': return showRepPrd();
     case 'linkBackup': return BackupDir.connect();
     case 'import': $('#importInput').value = ''; return $('#importInput').click();
     case 'saveSettings': {
@@ -1593,8 +1648,12 @@ document.addEventListener('change', e => {
     if (el.dataset.vf === 'cost') { const n = parseMoney(el.value); vi.cost = n; el.value = isNum(n) ? n.toLocaleString('ko-KR') : ''; }
     else vi.memo = el.value;
     touch(p); if (!save()) return;
-    const tt = $('#vendTotal'); if (tt) tt.textContent = won(vendorTotal(p));
     return;
+  }
+  if (el.dataset.pf && el.closest('#costTotals')) {
+    const p = curProject(); if (!p) return;
+    const n = parseMoney(el.value); p[el.dataset.pf] = n; el.value = isNum(n) ? n.toLocaleString('ko-KR') : '';
+    touch(p); save(); return;
   }
   const tr = el.closest('#costBody tr');
   if (tr && el.dataset.f) {
@@ -1603,12 +1662,12 @@ document.addEventListener('change', e => {
     else c[el.dataset.f] = el.value;
     touch(p);
     if (!save()) return; // 실패 표시는 save()가 함. 입력값은 화면에 남겨 다시 시도 가능
-    $('#costTotals').innerHTML = costTotalsHTML(p);
+    const qs = $('#costQuoteSum'); if (qs) qs.textContent = won(projCost(p).quote);
   }
 });
 document.addEventListener('input', e => {
   if (e.target.id === 'fQ') { UI.list.q = e.target.value; UI.list.page = 1; clearTimeout(window.__qt); window.__qt = setTimeout(refreshList, 120); }
-  if (e.target.matches('#costBody input[data-money], #vendBody input[data-money]')) e.target.value = e.target.value.replace(/[^\d,\-]/g, '');
+  if (e.target.matches('#costBody input[data-money], #vendBody input[data-money], #costTotals input[data-money]')) e.target.value = e.target.value.replace(/[^\d,\-]/g, '');
   if (e.target.matches('#vendBody textarea')) { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }
 });
 window.addEventListener('hashchange', route);
