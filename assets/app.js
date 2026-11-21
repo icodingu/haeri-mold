@@ -356,11 +356,11 @@ window.addEventListener('beforeunload', e => { if (Cloud.dirty || Cloud.pushing)
 // 저장 실패 시 메모리 상태를 되돌리기 위한 스냅샷
 const snap = () => JSON.stringify({ p: DB.projects, s: DB.schedules });
 function restore(x) { const o = JSON.parse(x); DB.projects = o.p.map(normalizeProject); DB.schedules = o.s; }
-// 달력 일정: { id, date: 'YYYY-MM-DD', title, dwgNo(선택) }
+// 달력 일정: { id, date: 'YYYY-MM-DD', title, dwgNo(선택), color(선택 '#rrggbb') }
 function sanitizeSchedules(arr) {
   if (!Array.isArray(arr)) return [];
   return arr.filter(x => x && typeof x === 'object' && /^\d{4}-\d{2}-\d{2}$/.test(String(x.date)) && String(x.title || '').trim())
-    .map(x => ({ id: String(x.id || uid('s')), date: String(x.date), title: String(x.title).trim(), dwgNo: String(x.dwgNo || '') }));
+    .map(x => { const o = { id: String(x.id || uid('s')), date: String(x.date), title: String(x.title).trim(), dwgNo: String(x.dwgNo || '') }; if (/^#[0-9a-f]{6}$/i.test(String(x.color || ''))) o.color = String(x.color).toLowerCase(); return o; });
 }
 function saveSoon() { clearTimeout(saveTimer); saveTimer = setTimeout(save, 250); }
 function touch(p) { p.updatedAt = nowISO(); }
@@ -780,10 +780,13 @@ function viewProjects(isDash) {
 /* ---------------- 달력 일정 ---------------- */
 const CAL_COLORS = ['#2fc6c0', '#3b8beb', '#f0b543', '#a48cf0', '#3ccf8e', '#ef8a6b'];
 function calColor(dwgNo) { if (!dwgNo) return '#7b879c'; let h = 0; for (const ch of dwgNo) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return CAL_COLORS[h % CAL_COLORS.length]; }
+// 일정 색: 직접 고른 색이 있으면 그 색, 없으면(예전 일정) 도번으로 정해지던 색
+const CAL_PALETTE = [['#e5484d', '빨강'], ['#f76b15', '주황'], ['#f0b543', '노랑'], ['#3ccf8e', '초록'], ['#2fc6c0', '청록'], ['#3b8beb', '파랑'], ['#a48cf0', '보라'], ['#7b879c', '회색']];
+const schedColor = x => x.color || calColor(x.dwgNo);
+// 달력 표시: 도번 + 내용 (예: HR26-0701 가공)
 function schedLabel(x) {
-  const p = x.dwgNo ? getP(x.dwgNo) : null;
-  if (!p || !p.model || x.title.startsWith(p.model)) return x.title;
-  return p.model + ' ' + x.title;
+  if (!x.dwgNo || x.title.startsWith(x.dwgNo)) return x.title;
+  return x.dwgNo + ' ' + x.title;
 }
 const ymd = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 function calendarHTML() {
@@ -796,7 +799,7 @@ function calendarHTML() {
   for (let d = 1; d <= days; d++) {
     const date = ymd(y, m, d), dow = (first + d - 1) % 7, ev = byDate[date] || [];
     cells.push(`<div class="cday${date === tdy ? ' today' : ''}${dow === 0 ? ' sun' : dow === 6 ? ' sat' : ''}" data-day="${date}">
-      <div class="dn">${d}</div>${ev.slice(0, 3).map(x => `<div class="cev" style="--c:${calColor(x.dwgNo)}" title="${esc(schedLabel(x))}">${esc(schedLabel(x))}</div>`).join('')}${ev.length > 3 ? `<div class="cmore">+${ev.length - 3}건</div>` : ''}</div>`);
+      <div class="dn">${d}</div>${ev.slice(0, 3).map(x => `<div class="cev" style="--c:${schedColor(x)}" title="${esc(schedLabel(x))}">${esc(schedLabel(x))}</div>`).join('')}${ev.length > 3 ? `<div class="cmore">+${ev.length - 3}건</div>` : ''}</div>`);
   }
   while (cells.length % 7) cells.push('<div class="cday out"></div>');
   return `<div class="calh"><button class="btn sm" data-cal="-1">‹</button><b>${y}년 ${m + 1}월</b><button class="btn sm" data-cal="1">›</button><button class="btn sm ghost" data-cal="0">오늘</button></div>
@@ -807,22 +810,24 @@ function dayModal(date) {
   const W = '일월화수목금토'[new Date(date + 'T00:00').getDay()];
   const listHTML = () => {
     const ev = DB.schedules.filter(x => x.date === date);
-    return ev.length ? ev.map(x => `<div class="sitem"><span class="sdot" style="background:${calColor(x.dwgNo)}"></span><div class="stx"><b>${esc(schedLabel(x))}</b>${x.dwgNo ? `<span class="muted"> · ${esc(x.dwgNo)}</span>` : ''}</div><button class="btn sm danger" data-sdel="${esc(x.id)}">삭제</button></div>`).join('')
+    return ev.length ? ev.map(x => `<div class="sitem"><input type="color" class="scol" data-scol="${esc(x.id)}" value="${esc(schedColor(x))}" title="색 바꾸기" aria-label="일정 색 바꾸기"><div class="stx"><b>${esc(schedLabel(x))}</b>${x.dwgNo && getP(x.dwgNo) && getP(x.dwgNo).model ? `<span class="muted"> · ${esc(getP(x.dwgNo).model)}</span>` : ''}</div><button class="btn sm danger" data-sdel="${esc(x.id)}">삭제</button></div>`).join('')
       : '<div class="muted" style="padding:6px 0">등록된 일정이 없습니다.</div>';
   };
   const cur = UI.cur && getP(UI.cur) ? UI.cur : '';
+  if (!/^#[0-9a-f]{6}$/i.test(UI.calColor || '')) UI.calColor = localStorage.getItem('haeri_cal_color') || CAL_PALETTE[5][0];
   const root = modal(`${date} (${W}) 일정`, `<div id="sd_list">${listHTML()}</div>
     <div class="form" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
       <label>관련 금형<select id="sd_p"><option value="">(선택 안 함)</option>${DB.projects.map(p => `<option value="${esc(p.dwgNo)}" ${p.dwgNo === cur ? 'selected' : ''}>${esc(dispName(p))}</option>`).join('')}</select></label>
       <label>일정 내용 *<input type="text" id="sd_t" placeholder="예: 가공, 시사출, 몰드베이스 입고" autocomplete="off"></label>
-      <span class="hint full">금형을 고르면 달력에 ‘모델명 + 내용’으로 표시됩니다 (예: 만능봉수 가공).</span>
+      <div class="full"><div class="clabel">색</div><div class="cpick" id="sd_c" role="radiogroup" aria-label="일정 색">${CAL_PALETTE.map(([c, n]) => `<button type="button" class="csw${c === UI.calColor ? ' on' : ''}" data-csw="${c}" style="--c:${c}" title="${n}" aria-label="${n}" role="radio" aria-checked="${c === UI.calColor}"></button>`).join('')}<label class="ccustom" title="다른 색 직접 고르기"><input type="color" id="sd_cc" value="${esc(UI.calColor)}" aria-label="다른 색 직접 고르기">직접</label></div></div>
+      <span class="hint full">금형을 고르면 달력에 ‘도번 + 내용’으로 표시됩니다 (예: HR26-0701 가공). 등록한 일정의 색은 위 목록의 동그라미를 눌러 바꿀 수 있습니다.</span>
       <span class="hint err full" id="sd_err"></span></div>`, [
     { text: '닫기' },
     { text: '일정 추가', cls: 'pri', fn: r => {
       const t = $('#sd_t', r).value.trim();
       if (!t) { $('#sd_err', r).textContent = '일정 내용을 입력하세요.'; $('#sd_t', r).focus(); return false; }
       const b = snap();
-      DB.schedules.push({ id: uid('s'), date, title: t, dwgNo: $('#sd_p', r).value });
+      DB.schedules.push({ id: uid('s'), date, title: t, dwgNo: $('#sd_p', r).value, color: UI.calColor });
       if (!save()) { restore(b); return false; }
       $('#sd_t', r).value = ''; $('#sd_err', r).textContent = ''; $('#sd_list', r).innerHTML = listHTML(); refreshCal();
       toast('일정을 추가했습니다'); $('#sd_t', r).focus();
@@ -830,7 +835,21 @@ function dayModal(date) {
     } }]);
   $('#sd_t', root).focus();
   $('#sd_t', root).addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); root.querySelector('[data-mbtn="1"]').click(); } });
+  const setColor = c => {
+    UI.calColor = c; try { localStorage.setItem('haeri_cal_color', c); } catch (e) {}
+    root.querySelectorAll('[data-csw]').forEach(s => { const on = s.dataset.csw === c; s.classList.toggle('on', on); s.setAttribute('aria-checked', on); });
+    $('#sd_cc', root).value = c;
+  };
+  $('#sd_cc', root).addEventListener('input', e => setColor(e.target.value.toLowerCase()));
+  root.addEventListener('change', e => {
+    const inp = e.target.closest('[data-scol]'); if (!inp) return;
+    const x = DB.schedules.find(s => s.id === inp.dataset.scol); if (!x) return;
+    const bk = snap(); x.color = inp.value.toLowerCase();
+    if (!save()) { restore(bk); return; }
+    $('#sd_list', root).innerHTML = listHTML(); refreshCal();
+  });
   root.addEventListener('click', async e => {
+    const sw = e.target.closest('[data-csw]'); if (sw) { setColor(sw.dataset.csw); return; }
     const b = e.target.closest('[data-sdel]'); if (!b) return;
     const x = DB.schedules.find(s => s.id === b.dataset.sdel); if (!x) return;
     if (!(await confirmBox('일정 삭제', `<b>${esc(date)}</b> ‘${esc(schedLabel(x))}’ 일정을 삭제할까요?`, '삭제', true))) return;
