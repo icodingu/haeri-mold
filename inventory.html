@@ -4,90 +4,84 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>공구·부품 재고관리</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-/* VOICE: 현장용 작업 도구 — 담백하고 정확하게, 숫자가 먼저
-   IDEA: 공구 크립(공구 보관실)의 빈 라벨과 작업 지시표
-   PICTURE: 작업 준비 표 자체 — 필요/현재고 막대와 부족 표시
-   COLOUR and TYPE: 그라파이트 바탕, 안전 노랑 강조, 부족은 적색 / IBM Plex Sans KR
-   LAYOUT: 상단 다크 밴드에 제목·지표, 탭 아래 한 열 폼 + 표 */
-:root{color-scheme:light dark;
---bg:light-dark(#ffffff,#141819);--ink:light-dark(#16191a,#e9eceb);--mut:light-dark(#5d6669,#9aa4a6);
---line:light-dark(#dfe3e3,#2c3335);--soft:light-dark(#f3f5f4,#1c2123);
---top:#1d2326;--topink:#eef1f0;--y:#ffc829;--yink:#1d2326;--red:light-dark(#c8341d,#ff7a62);--ok:light-dark(#2f7a4d,#6fd39a);--warn:light-dark(#a86a00,#ffc829)}
-:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+/* 금형 대시보드와 같은 남색 바탕 · 청록 강조 */
+:root{color-scheme:dark;--bg:#0d1420;--panel:#151f30;--panel2:#1a2538;--line:#25324a;--line2:#2f3e5a;
+--ink:#e3e9f3;--mut:#a3b0c5;--dim:#6f7d95;--ac:#2fc6c0;--acbg:rgba(47,198,192,.12);--ok:#3ccf8e;--warn:#f0b543;--red:#ef6b6b;--blue:#3b8beb}
 *{box-sizing:border-box;min-width:0}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "IBM Plex Sans KR",system-ui,sans-serif;overflow-x:clip}
-.band{padding:clamp(24px,4vw,48px) max(5vw,16px)}
-.wrap{max-width:1240px;margin:0 auto}
-header{background:var(--top);color:var(--topink)}
-h1{font-size:clamp(28px,4vw,42px);line-height:1.1;margin:0 0 6px;text-wrap:balance}
-header p{margin:0;color:#b9c2c3;max-width:62ch}
-.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:#3a4346;margin-top:28px;border:1px solid #3a4346}
-.kpi{background:var(--top);padding:14px 16px}
-.kpi b{display:block;font-size:clamp(26px,3.4vw,36px);line-height:1.1;font-variant-numeric:tabular-nums}
-.kpi span{color:#b9c2c3;font-size:14px}.kpi.alert b{color:var(--y)}
-nav{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
-nav .wrap{display:flex;gap:4px;overflow-x:auto;padding:0 max(5vw,16px)}
-nav button{flex:none;border:0;background:none;color:var(--mut);font:500 16px inherit;font-family:inherit;padding:14px;min-height:48px;border-bottom:3px solid transparent;cursor:pointer}
-nav button[aria-selected=true]{color:var(--ink);border-color:var(--y)}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip}
+.top{padding:16px 18px 0}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
+.kpi::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c,var(--ac))}
+.kpi span{display:block;color:var(--dim);font-size:12px;font-weight:600}
+.kpi b{display:block;font-size:24px;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums}
+.kpi b small{font-size:13px;color:var(--dim);font-weight:500;margin-left:3px}
+.kpi.alert b{color:var(--red)}
+nav{position:sticky;top:0;z-index:5;background:var(--bg);padding:14px 18px 10px}
+nav .wrap{display:inline-flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;overflow-x:auto;max-width:100%}
+nav button{flex:none;border:0;background:none;color:var(--mut);font:600 13.5px inherit;font-family:inherit;padding:8px 16px;border-radius:7px;cursor:pointer;transition:.15s}
+nav button:hover{color:var(--ink)}
+nav button[aria-selected=true]{background:var(--acbg);color:var(--ac);box-shadow:inset 0 0 0 1px rgba(47,198,192,.35)}
+main{padding:4px 18px 18px}
 section[hidden]{display:none}
-h2{font-size:24px;line-height:1.2;margin:0 0 4px}
-.sub{color:var(--mut);margin:0 0 20px;max-width:75ch}
-.grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:32px;align-items:start}
+h2{font-size:17px;margin:0 0 2px}
+.sub{color:var(--dim);margin:0 0 14px;font-size:13px}
+.grid{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:16px;align-items:start}
 .grid.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-form.card{background:var(--soft);border:1px solid var(--line);padding:18px;display:grid;gap:12px}
-form.card h3{margin:0;font-size:17px}
-label{display:grid;gap:4px;font-size:14px;color:var(--mut)}
-.row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
-.row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-input,select,textarea{font:16px inherit;font-family:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);padding:9px 10px;min-height:44px;width:100%;border-radius:2px}
-textarea{min-height:110px}
-input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--y);outline-offset:1px}
-.btn{font:500 15px inherit;font-family:inherit;min-height:44px;padding:0 16px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;border-radius:2px;white-space:nowrap}
-.btn.pri{background:var(--y);color:var(--yink);border-color:var(--y)}
-.btn.sm{min-height:36px;padding:0 10px;font-size:14px}
-.btn.del{color:var(--red)}
-.acts{display:flex;flex-wrap:wrap;gap:8px}
+.panel,form.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+form.card{display:grid;gap:10px;position:sticky;top:64px}
+form.card h3{margin:0 0 2px;font-size:15px}
+label{display:grid;gap:4px;font-size:12px;color:var(--mut);font-weight:500}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+input,select,textarea{font:14px inherit;font-family:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line2);padding:7px 10px;min-height:36px;width:100%;border-radius:7px}
+input[readonly]{color:var(--mut);background:var(--panel2)}
+textarea{min-height:100px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 3px rgba(47,198,192,.15)}
+button:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+.btn{font:600 13px inherit;font-family:inherit;min-height:36px;padding:0 14px;border:1px solid var(--line2);background:var(--panel2);color:var(--ink);cursor:pointer;border-radius:7px;white-space:nowrap;transition:.15s}
+.btn:hover{border-color:var(--ac)}
+.btn.pri{background:var(--ac);color:#06201f;border-color:var(--ac);font-weight:700}
+.btn.pri:hover{filter:brightness(1.1)}
+.btn.sm{min-height:28px;padding:0 9px;font-size:12px}
+.btn.del{color:var(--red);background:transparent;border-color:rgba(239,107,107,.35)}
+.btn.del:hover{background:rgba(239,107,107,.1);border-color:var(--red)}
+.acts{display:flex;flex-wrap:wrap;gap:6px}
 .tools{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
-.tools input,.tools select{width:auto;flex:1 1 170px}
-table{width:100%;border-collapse:collapse;font-size:15px}
-th{text-align:left;font-weight:500;color:var(--mut);font-size:14px;border-bottom:2px solid var(--ink);padding:8px}
-td{border-bottom:1px solid var(--line);padding:9px 8px;vertical-align:middle}
+.tools input,.tools select{width:auto;flex:1 1 160px}
+.tools .btn{flex:none}
+.tbl{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;font-weight:600;color:var(--dim);font-size:12px;background:var(--panel2);border-bottom:1px solid var(--line);padding:9px 12px;white-space:nowrap}
+td{border-bottom:1px solid var(--line);padding:9px 12px;vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:rgba(255,255,255,.02)}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.chip{display:inline-block;font-size:13px;padding:2px 8px;border-radius:20px;white-space:nowrap;border:1px solid currentColor}
+td.n b{font-size:15px}
+.chip{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.chip.c-ok{color:var(--ok);background:rgba(60,207,142,.12)}.chip.c-warn{color:var(--warn);background:rgba(240,181,67,.13)}.chip.c-bad{color:var(--red);background:rgba(239,107,107,.13)}
 .c-ok{color:var(--ok)}.c-warn{color:var(--warn)}.c-bad{color:var(--red)}
 .code{font-weight:700}
-.kc{display:inline-block;font-size:13px;font-weight:500;color:var(--ink);background:var(--soft);border:1px solid var(--line);padding:0 6px;margin:0 4px;border-radius:2px;white-space:nowrap}
-.meter{height:8px;background:var(--soft);border:1px solid var(--line);position:relative;min-width:80px}
-.meter i{position:absolute;inset:0 auto 0 0;background:var(--ok)}
-.meter i.bad{background:var(--red)}.meter i.warn{background:var(--warn)}
-.usage{display:grid;gap:6px}
-.urow{display:grid;grid-template-columns:minmax(0,1fr) 84px 44px;gap:6px}
-.urow .btn{padding:0}
-.cats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
-.cat{border:1px solid var(--line);padding:8px 12px;background:var(--soft)}
-.cat b{font-size:20px;margin-right:6px;font-variant-numeric:tabular-nums}
-h3.tt{font-size:18px;margin:28px 0 10px}
-.empty{color:var(--mut);padding:24px 8px;text-align:center}
-.note{font-size:13px;color:var(--mut)}
-.msg{font-size:14px;color:var(--ok);min-height:20px;margin:0}
-footer{border-top:1px solid var(--line)}
-details summary{cursor:pointer;font-weight:500;min-height:44px;display:flex;align-items:center}
-.scroll{overflow-x:auto}
-@media(max-width:860px){.grid,.grid.two{grid-template-columns:minmax(0,1fr)}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px;border-bottom:1px solid var(--line)}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:7em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:6.5em;margin-inline-start:-7em;color:var(--mut)}.stack td:empty{display:none}.row3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
-@media(prefers-reduced-motion:no-preference){.meter i{transition:width .4s ease}}
+.spec{color:var(--ac);font-weight:600;margin-left:6px;font-variant-numeric:tabular-nums}
+.cats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.cat{border:1px solid var(--line);border-radius:20px;padding:4px 12px;background:var(--panel);color:var(--mut);font-size:12.5px}
+.cat b{color:var(--ink);font-size:14px;margin-right:5px;font-variant-numeric:tabular-nums}
+h3.tt{font-size:14px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
+h3.tt::before{content:"";width:3px;height:14px;border-radius:2px;background:var(--ac)}
+.empty{color:var(--dim);padding:28px 8px;text-align:center}
+.note{font-size:12px;color:var(--dim)}
+.msg{font-size:13px;color:var(--ok);min-height:18px;margin:0}
+footer{padding:4px 18px 24px}
+footer details{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px 16px 12px}
+details summary{cursor:pointer;font-weight:600;min-height:40px;display:flex;align-items:center;color:var(--mut)}
+@media(max-width:900px){.grid,.grid.two{grid-template-columns:minmax(0,1fr)}form.card{position:static}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.stack thead{display:none}.stack tr{display:grid;padding:10px 12px;border-bottom:1px solid var(--line)}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:6.5em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:6em;margin-inline-start:-6.5em;color:var(--dim)}.stack td:empty{display:none}.row3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 </style>
 <script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
 </head>
 <body>
-<header class="band"><div class="wrap">
-  <h1>공구·부품 재고관리</h1>
-  <p>3D 모델에서 분류한 부품과 가공 공구의 재고·입출고를 관리하고, 작업 전에 현재고를 한눈에 확인합니다.</p>
-  <div class="kpis" id="kpis"></div>
-</div></header>
+<div class="top"><div class="kpis" id="kpis"></div></div>
 
 <nav><div class="wrap" role="tablist">
   <button role="tab" data-t="prep" aria-selected="true">작업 준비</button>
@@ -96,24 +90,24 @@ details summary{cursor:pointer;font-weight:500;min-height:44px;display:flex;alig
   <button role="tab" data-t="log" aria-selected="false">입출고 기록</button>
 </div></nav>
 
-<main class="band"><div class="wrap">
+<main>
 
 <section id="s-prep">
   <h2>작업 준비 점검</h2>
-  <p class="sub">작업 전에 부품과 공구의 현재고를 한눈에 확인합니다.</p>
+  <p class="sub">작업 전에 부품 재고와 공구 재고를 한눈에 확인합니다.</p>
   <div class="tools">
     <input id="prepQ" type="search" placeholder="부품·공구 검색" aria-label="부품·공구 검색">
-    <button class="btn" id="copyStock">현재고 목록 복사</button>
+    <button class="btn" id="copyStock">재고 목록 복사</button>
   </div>
   <div id="prepSum" class="cats"></div>
   <div class="grid two">
     <div>
-      <h3 class="tt">부품 현재고</h3>
-      <table class="stack" id="prepPartTbl"><thead><tr><th>부품</th><th class="n">현재고</th><th>보관위치</th></tr></thead><tbody></tbody></table>
+      <h3 class="tt">부품 재고</h3>
+      <div class="tbl"><table class="stack" id="prepPartTbl"><thead><tr><th>부품</th><th class="n">재고</th><th>보관위치</th></tr></thead><tbody></tbody></table></div>
     </div>
     <div>
-      <h3 class="tt">공구 현재고</h3>
-      <table class="stack" id="prepTbl"><thead><tr><th>공구</th><th class="n">현재고</th><th>보관위치</th></tr></thead><tbody></tbody></table>
+      <h3 class="tt">공구 재고</h3>
+      <div class="tbl"><table class="stack" id="prepTbl"><thead><tr><th>공구</th><th class="n">재고</th><th>보관위치</th></tr></thead><tbody></tbody></table></div>
     </div>
   </div>
   <p class="msg" id="prepMsg"></p>
@@ -155,41 +149,34 @@ details summary{cursor:pointer;font-weight:500;min-height:44px;display:flex;alig
         <select id="toolS" aria-label="상태 필터"><option value="">전체 상태</option><option value="bad">부족·소진</option><option value="ok">정상</option></select>
       </div>
       <div id="toolSum" class="cats"></div>
-      <table class="stack" id="toolTbl"><thead><tr><th>한글표기</th><th>공구명</th><th>종류</th><th>규격</th><th class="n">현재고</th><th class="n">안전</th><th>위치</th><th>상태</th><th></th></tr></thead><tbody></tbody></table>
+      <div class="tbl"><table class="stack" id="toolTbl"><thead><tr><th>한글표기</th><th>공구명</th><th>종류</th><th>규격</th><th class="n">현재고</th><th class="n">안전</th><th>위치</th><th>상태</th><th></th></tr></thead><tbody></tbody></table></div>
     </div>
   </div>
 </section>
 
 <section id="s-parts" hidden>
   <h2>부품 재고관리</h2>
-  <p class="sub">모델에서 나온 부품을 분류하고 현재고와 필요 수량을 관리합니다. 필요 수량보다 현재고가 적으면 '부족'으로 표시됩니다.</p>
+  <p class="sub">리턴 스프링, 밀핀, 육각렌치볼트, 로케이트링 같은 표준 금형부품을 규격별로 관리합니다. 재고가 안전재고 이하이면 '부족'으로 표시됩니다.</p>
   <div class="grid">
     <form class="card" id="partForm">
       <h3 id="partFormTitle">부품 등록</h3>
       <div class="row2">
         <label>분류<select id="p_cat"></select></label>
-        <label>한글 표기<input id="p_kcode" placeholder="비워두면 자동 (코어-001)"></label>
+        <label>조달<select id="p_src"><option>구매품</option><option>자체 가공</option><option>외주 가공</option></select></label>
       </div>
-      <label>부품명 *<input id="p_name" required placeholder="캐비티 인서트"></label>
+      <label>부품명 *<input id="p_name" required placeholder="리턴 스프링"></label>
       <div class="row2">
-        <label>규격<input id="p_spec" placeholder="Ø6 × L150"></label>
-        <label>재질<input id="p_mat" placeholder="NAK80"></label>
+        <label>규격<input id="p_spec" placeholder="Ø40 × 90L"></label>
+        <label>재질<input id="p_mat" placeholder="SWOSC-V"></label>
       </div>
       <div class="row3">
-        <label>필요 수량 *<input id="p_need" type="number" min="0" step="1" required></label>
-        <label>현재고<input id="p_stock" type="number" min="0" step="1"></label>
+        <label>재고 *<input id="p_stock" type="number" min="0" step="1" required></label>
         <label>안전재고<input id="p_safe" type="number" min="0" step="1"></label>
+        <label>단위<input id="p_unit" placeholder="EA"></label>
       </div>
       <div class="row2">
-        <label>조달<select id="p_src"><option>자체 가공</option><option>구매품</option><option>외주 가공</option></select></label>
-        <label>보관위치<input id="p_loc"></label>
-      </div>
-      <label>가공공정<input id="p_proc" placeholder="황삭 → 정삭 → 드릴 → 탭"></label>
-      <div>
-        <label style="margin-bottom:6px">사용 공구와 부품 1개당 소요량</label>
-        <div class="usage" id="usage"></div>
-        <p class="note">소요량 예: 1 = 부품마다 1개, 0.25 = 부품 4개에 1개 소모. 합계는 올림 처리됩니다.</p>
-        <button class="btn sm" type="button" id="addUse">+ 공구 추가</button>
+        <label>보관위치<input id="p_loc" placeholder="D-01-1"></label>
+        <label>공급업체<input id="p_vendor" placeholder="미스미 등"></label>
       </div>
       <div class="acts"><button class="btn pri" type="submit">저장</button><button class="btn" type="button" id="partCancel">새로 입력</button></div>
       <p class="msg" id="partMsg"></p>
@@ -198,10 +185,10 @@ details summary{cursor:pointer;font-weight:500;min-height:44px;display:flex;alig
       <div class="tools">
         <select id="partC" aria-label="분류 필터"></select>
         <input id="partQ" type="search" placeholder="이름·규격 검색" aria-label="부품 검색">
-        <select id="partS" aria-label="상태 필터"><option value="">전체 상태</option><option value="bad">부족</option><option value="ok">충분</option></select>
+        <select id="partS" aria-label="상태 필터"><option value="">전체 상태</option><option value="bad">부족·소진</option><option value="ok">정상</option></select>
       </div>
       <div class="cats" id="catSum"></div>
-      <table class="stack" id="partTbl"><thead><tr><th>한글표기</th><th>부품명</th><th>분류</th><th>재질</th><th class="n">필요</th><th class="n">현재고</th><th>상태</th><th>사용 공구</th><th></th></tr></thead><tbody></tbody></table>
+      <div class="tbl"><table class="stack" id="partTbl"><thead><tr><th>부품명 · 규격</th><th>분류</th><th>재질</th><th class="n">재고</th><th class="n">안전</th><th>위치</th><th>상태</th><th></th></tr></thead><tbody></tbody></table></div>
     </div>
   </div>
 </section>
@@ -235,14 +222,14 @@ details summary{cursor:pointer;font-weight:500;min-height:44px;display:flex;alig
     </form>
     <div>
       <div class="tools"><select id="logF" aria-label="대상 필터"><option value="">전체</option><option value="tool">공구만</option><option value="part">부품만</option></select></div>
-      <table class="stack" id="logTbl"><thead><tr><th>일자</th><th>대상</th><th>구분</th><th>품목</th><th class="n">수량</th><th>구입처</th><th class="n">단가</th><th class="n">금액</th><th>작업자</th><th>비고</th><th></th></tr></thead><tbody></tbody></table>
+      <div class="tbl"><table class="stack" id="logTbl"><thead><tr><th>일자</th><th>대상</th><th>구분</th><th>품목</th><th class="n">수량</th><th>구입처</th><th class="n">단가</th><th class="n">금액</th><th>작업자</th><th>비고</th><th></th></tr></thead><tbody></tbody></table></div>
       <p class="note" id="logSum"></p>
     </div>
   </div>
 </section>
-</div></main>
+</main>
 
-<footer class="band"><div class="wrap">
+<footer>
   <details>
     <summary>데이터 백업 · 복원 · 엑셀로 옮기기</summary>
     <p class="note" id="bkNote">입력한 데이터는 이 브라우저에 저장됩니다. 다른 PC에서 쓰거나 보관하려면 백업 텍스트를 복사해 두세요. CSV는 엑셀에 붙여넣을 수 있습니다.</p>
@@ -258,13 +245,14 @@ details summary{cursor:pointer;font-weight:500;min-height:44px;display:flex;alig
     <p class="msg" id="bkMsg"></p>
   </details>
   <p class="note">처음 열면 가상의 예시 데이터가 들어 있습니다.</p>
-</div></footer>
+</footer>
 
 <script>
 {
 const KEY='tool-part-inv-v2';
 const TYPES=['엔드밀','볼엔드밀','드릴','탭','리머','센터드릴','인서트','보링바','페이스커터','기타'];
-const CATS=['코어','캐비티','슬라이드','경사핀','이젝터핀','가이드핀/부시','스프루/러너','플레이트','냉각/배관','체결부품','기타'];
+const CATS=['리턴 스프링','이젝터핀(밀핀)','육각렌치볼트','로케이트링','스프루부시','스톱핀','냉각 부품','기타 표준품'];
+const OLD_SAMPLE=['P-001|코어 인서트','P-002|캐비티 인서트','P-010|이젝터핀','P-011|가이드핀','P-020|가동측 형판','P-030|슬라이드 코어','P-040|육각 볼트','P-003|캐비티 블록'];
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Math.random().toString(36).slice(2,10);
@@ -278,43 +266,52 @@ function sample(){
     t('DR-6.8','초경 드릴','드릴','Ø6.8','초경',5,3,'B-01-1',27000),t('DR-5','HSS 드릴','드릴','Ø5','HSS-Co',8,5,'B-01-2',6000),
     t('TP-M8','스파이럴 탭','탭','M8 × P1.25','HSS-E',2,2,'B-02-1',15000),t('RM-6','초경 리머','리머','Ø6 H7','초경',1,1,'B-03-1',52000),
     t('CD-3','센터드릴','센터드릴','Ø3 90°','HSS',10,4,'B-04-1',4000),t('IN-APMT','밀링 인서트','인서트','APMT1135','초경/PVD',20,20,'C-01-1',7500)];
-  const id=c=>tools.find(x=>x.code===c).id;
-  const p=(no,name,cat,spec,mat,need,stock,safe,src,proc,use)=>({id:uid(),no,name,cat,spec,mat,need,stock,safe,src,loc:'',proc,use:use.map(([c,q])=>({tool:id(c),q}))});
-  const parts=[p('P-001','코어 인서트','코어','','NAK80',2,0,0,'자체 가공','황삭 → 정삭 → 드릴',[['IN-APMT',2],['EM-10',.5],['BE-R3',.5],['BE-R1',.5],['CD-3',.25],['DR-6.8',.5]]),
-    p('P-002','캐비티 인서트','캐비티','','NAK80',2,0,0,'자체 가공','황삭 → 정삭',[['IN-APMT',2],['EM-10',.5],['BE-R3',1],['BE-R1',1]]),
-    p('P-010','이젝터핀','이젝터핀','Ø6 × L150','SKD61',12,20,10,'구매품','길이 가공',[['RM-6',.1]]),
-    p('P-011','가이드핀','가이드핀/부시','Ø20 × L120','SUJ2',4,2,4,'구매품','',[]),
-    p('P-020','가동측 형판','플레이트','350 × 300 × 60','S50C',1,0,0,'자체 가공','황삭 → 드릴 → 탭 → 리밍',[['IN-APMT',4],['EM-10',1],['EM-6',1],['CD-3',1],['DR-6.8',1],['TP-M8',1],['DR-5',1],['RM-6',1]]),
-    p('P-030','슬라이드 코어','슬라이드','','SKD61',2,1,0,'자체 가공','정삭 → 드릴',[['EM-6',1],['BE-R1',.5],['DR-5',.5]]),
-    p('P-040','육각 볼트','체결부품','M8 × 30','SCM435',16,40,30,'구매품','',[]),
-    p('P-003','캐비티 블록','캐비티','','HPM38',1,0,0,'자체 가공','황삭 → 정삭',[['IN-APMT',4],['EM-10',1],['BE-R3',1]])];
-  return {tools,parts,logs:[{id:uid(),date:today(),obj:'tool',kind:'in',item:id('EM-10'),qty:4,vendor:'한국공구상사',price:48000,who:'',memo:'정기 입고'}]};
+  return {tools,parts:sampleParts(),logs:[{id:uid(),date:today(),obj:'tool',kind:'in',item:tools[0].id,qty:4,vendor:'한국공구상사',price:48000,who:'',memo:'정기 입고'}]};
+}
+function sampleParts(){
+  const p=(cat,name,spec,mat,stock,safe,loc)=>({id:uid(),cat,name,spec,mat,stock,safe,unit:'EA',src:'구매품',loc,vendor:''});
+  return [p('리턴 스프링','리턴 스프링','Ø40 × 90L','SWOSC-V',4,4,'D-01-1'),
+    p('이젝터핀(밀핀)','이젝터핀(밀핀)','Ø3 × 150L','SKD61',20,10,'D-02-1'),p('이젝터핀(밀핀)','이젝터핀(밀핀)','Ø4 × 150L','SKD61',16,10,'D-02-2'),
+    p('이젝터핀(밀핀)','이젝터핀(밀핀)','Ø6 × 150L','SKD61',8,10,'D-02-3'),p('이젝터핀(밀핀)','이젝터핀(밀핀)','Ø8 × 200L','SKD61',6,4,'D-02-4'),
+    p('육각렌치볼트','육각렌치볼트','M6 × 20','SCM435',50,30,'D-03-1'),p('육각렌치볼트','육각렌치볼트','M8 × 30','SCM435',40,30,'D-03-2'),
+    p('육각렌치볼트','육각렌치볼트','M10 × 40','SCM435',24,20,'D-03-3'),p('육각렌치볼트','육각렌치볼트','M12 × 50','SCM435',12,16,'D-03-4'),
+    p('로케이트링','로케이트링','Ø100','S45C',2,1,'D-04-1'),p('스프루부시','스프루부시','SR20 · Ø3.5','SKD61',2,1,'D-04-2'),
+    p('스톱핀','스톱핀','Ø16 × 5t','S45C',8,4,'D-04-3')];
+}
+function dropOldSample(o){
+  if(!o||!Array.isArray(o.parts))return false;
+  const used=new Set((o.logs||[]).filter(l=>l.obj==='part').map(l=>l.item));
+  const keep=o.parts.filter(p=>used.has(p.id)||!OLD_SAMPLE.includes(p.no+'|'+p.name));
+  if(keep.length===o.parts.length)return false;
+  o.parts=keep.length?keep:sampleParts();return true;
 }
 // 대시보드 안에서 열리면 데이터는 대시보드(클라우드)에 저장, 따로 열면 이 브라우저에 저장
 const EMBED=window.parent!==window;
 let S,lastSent='';
 if(!EMBED){try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}}
 if(!S||!S.tools||!S.parts)S=sample();
+dropOldSample(S);
 const validInv=o=>o&&Array.isArray(o.tools)&&Array.isArray(o.parts);
 const save=()=>{if(EMBED){const j=JSON.stringify(S);if(j!==lastSent){lastSent=j;parent.postMessage({type:'inv-save',data:S},location.origin)}}else{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}};
 const toolById=id=>S.tools.find(t=>t.id===id);
 const partById=id=>S.parts.find(p=>p.id===id);
 const tStatus=t=>{const s=+t.stock||0,f=+t.safe||0;return s<=0?['소진','c-bad','bad']:s<=f?['부족','c-warn','bad']:['정상','c-ok','ok']};
-const toMake=p=>Math.max(0,(+p.need||0)-(+p.stock||0));
-const pStatus=p=>{const s=+p.stock||0;return toMake(p)>0?['부족','c-bad','bad']:s-(+p.need||0)<(+p.safe||0)?['여유 적음','c-warn','ok']:['충분','c-ok','ok']};
+const pStatus=tStatus;
 // 코드 → 한글 표기 (직접 입력값 우선, 없으면 접두어로 자동 변환)
 const PREFIX={EM:'엔드밀',FE:'평엔드밀',BE:'볼엔드밀',BM:'볼엔드밀',CR:'코너R엔드밀',DR:'드릴',TP:'탭',TA:'탭',RM:'리머',CD:'센터드릴',SD:'스팟드릴',IN:'인서트',BB:'보링바',FC:'페이스커터',CH:'챔퍼밀',P:'부품',EP:'이젝터핀',GP:'가이드핀',GB:'가이드부시',BT:'볼트',PL:'플레이트',CO:'코어',CV:'캐비티',SL:'슬라이드'};
 function autoK(code,fallback){const m=String(code||'').trim().match(/^([A-Za-z]+)[-_ ]?(.*)$/);if(!m)return '';const k=PREFIX[m[1].toUpperCase()]||fallback||'';return k?(m[2]?k+'-'+m[2]:k):''}
 const kTool=t=>t.kcode||autoK(t.code,t.type)||t.code;
-const kPart=p=>{if(p.kcode)return p.kcode;const r=autoK(p.no,p.cat);return (r.startsWith('부품')&&p.cat&&p.cat!=='기타'?p.cat+r.slice(2):r)||p.no};
+const kPart=p=>[p.name,p.spec].filter(Boolean).join(' ')||p.no||'부품';
+const catIdx=c=>{const i=CATS.indexOf(c);return i<0?99:i};
+const byPart=(a,b)=>catIdx(a.cat)-catIdx(b.cat)||String(a.name).localeCompare(String(b.name),'ko')||String(a.spec||'').localeCompare(String(b.spec||''),'ko',{numeric:true});
 const flash=(id,txt)=>{$(id).textContent=txt;clearTimeout(flash[id]);flash[id]=setTimeout(()=>$(id).textContent='',2500)};
 async function copy(txt,msgId){try{await navigator.clipboard.writeText(txt);flash(msgId,'복사했습니다.')}catch(e){$('bkText').value=txt;$('bkText').closest('details').open=true;flash('bkMsg','복사가 막혀 아래 칸에 넣었습니다. 직접 복사하세요.')}}
 
 
 function renderKpis(){
   const lowT=S.tools.filter(t=>tStatus(t)[2]==='bad').length,lowP=S.parts.filter(p=>pStatus(p)[2]==='bad').length;
-  $('kpis').innerHTML=[['공구 재고',S.tools.length+'종',''],['공구 부족·소진',lowT+'종',lowT?'alert':''],['부품 재고',S.parts.length+'종',''],['부품 부족',lowP+'종',lowP?'alert':'']]
-    .map(([l,v,c])=>`<div class="kpi ${c}"><b>${v}</b><span>${l}</span></div>`).join('');
+  $('kpis').innerHTML=[['공구 재고',S.tools.length,'종','var(--blue)',''],['공구 부족·소진',lowT,'종',lowT?'var(--red)':'var(--ok)',lowT?'alert':''],['부품 재고',S.parts.length,'규격','var(--ac)',''],['부품 부족·소진',lowP,'규격',lowP?'var(--red)':'var(--ok)',lowP?'alert':'']]
+    .map(([l,v,u,c,a])=>`<div class="kpi ${a}" style="--c:${c}"><span>${l}</span><b>${v}<small>${u}</small></b></div>`).join('');
 }
 function fillSelects(){
   $('vendorList').innerHTML=[...new Set([...S.tools.map(t=>t.vendor),...S.logs.map(l=>l.vendor)].filter(Boolean))].sort().map(v=>`<option value="${esc(v)}">`).join('');
@@ -323,20 +320,20 @@ function fillSelects(){
 function fillLogItems(){
   const cur=$('l_item').value,isT=$('l_obj').value==='tool';
   $('l_item').innerHTML=isT?S.tools.map(t=>`<option value="${t.id}">${esc(kTool(t))} · ${esc(t.name)} (재고 ${fmt(t.stock)})</option>`).join('')
-    :S.parts.map(p=>`<option value="${p.id}">${esc(kPart(p))} · ${esc(p.name)} (재고 ${fmt(p.stock)})</option>`).join('');
+    :[...S.parts].sort(byPart).map(p=>`<option value="${p.id}">${esc(kPart(p))} (재고 ${fmt(p.stock)})</option>`).join('');
   if([...$('l_item').options].some(o=>o.value===cur))$('l_item').value=cur;
 }
 function prepLists(){
   const q=$('prepQ').value.trim().toLowerCase(),hit=a=>!q||a.join(' ').toLowerCase().includes(q);
-  return {parts:S.parts.filter(p=>hit([p.no,kPart(p),p.name,p.spec,p.mat])).sort((a,b)=>kPart(a).localeCompare(kPart(b),'ko')),
+  return {parts:S.parts.filter(p=>hit([p.no,kPart(p),p.cat,p.mat])).sort(byPart),
     tools:S.tools.filter(t=>hit([t.code,kTool(t),t.name,t.spec,t.type])).sort((a,b)=>a.code.localeCompare(b.code))};
 }
 function renderPrep(){
   const {parts,tools}=prepLists();
   $('prepSum').innerHTML=`<div class="cat"><b>${parts.length}</b>부품 종류 · 재고 ${fmt(parts.reduce((a,p)=>a+(+p.stock||0),0))}개</div><div class="cat"><b>${tools.length}</b>공구 종류 · 재고 ${fmt(tools.reduce((a,t)=>a+(+t.stock||0),0))}개</div>`;
-  $('prepPartTbl').tBodies[0].innerHTML=parts.length?parts.map(p=>`<tr><td><span class="code">${esc(kPart(p))}</span> ${esc(p.name)}${p.spec?'<br><span class="note">'+esc(p.spec)+'</span>':''}</td><td class="n"><b class="${(+p.stock||0)<=0?'c-bad':''}">${fmt(p.stock)}</b></td><td>${esc(p.loc)||'<span class="note">–</span>'}</td></tr>`).join('')
+  $('prepPartTbl').tBodies[0].innerHTML=parts.length?parts.map(p=>`<tr><td><span class="code">${esc(p.name)}</span>${p.spec?'<span class="spec">'+esc(p.spec)+'</span>':''}</td><td class="n"><b class="${pStatus(p)[1]}">${fmt(p.stock)}</b> ${esc(p.unit||'EA')}</td><td>${esc(p.loc)||'<span class="note">–</span>'}</td></tr>`).join('')
     :'<tr><td colspan="3" class="empty">표시할 부품이 없습니다.</td></tr>';
-  $('prepTbl').tBodies[0].innerHTML=tools.length?tools.map(t=>`<tr><td><span class="code">${esc(kTool(t))}</span> ${esc(t.name)}${t.spec?'<br><span class="note">'+esc(t.spec)+'</span>':''}</td><td class="n"><b class="${(+t.stock||0)<=0?'c-bad':''}">${fmt(t.stock)}</b> ${esc(t.unit)}</td><td>${esc(t.loc)||'<span class="note">–</span>'}</td></tr>`).join('')
+  $('prepTbl').tBodies[0].innerHTML=tools.length?tools.map(t=>`<tr><td><span class="code">${esc(kTool(t))}</span> ${esc(t.name)}${t.spec?'<span class="spec">'+esc(t.spec)+'</span>':''}</td><td class="n"><b class="${tStatus(t)[1]}">${fmt(t.stock)}</b> ${esc(t.unit)}</td><td>${esc(t.loc)||'<span class="note">–</span>'}</td></tr>`).join('')
     :'<tr><td colspan="3" class="empty">표시할 공구가 없습니다.</td></tr>';
 }
 function renderTools(){
@@ -349,17 +346,16 @@ function renderTools(){
 }
 function renderParts(){
   const cf=$('partC').value,q=$('partQ').value.trim().toLowerCase(),sf=$('partS').value;
-  const base=S.parts;
-  const list=base.filter(p=>(!cf||p.cat===cf)&&(!sf||pStatus(p)[2]===sf)&&(!q||[p.no,kPart(p),p.name,p.spec,p.mat].join(' ').toLowerCase().includes(q)));
-  const cnt={};for(const p of base)cnt[p.cat]=(cnt[p.cat]||0)+(+p.need||0);
-  $('catSum').innerHTML=Object.entries(cnt).map(([c,n])=>`<div class="cat"><b>${fmt(n)}</b>${esc(c)}</div>`).join('');
-  $('partTbl').tBodies[0].innerHTML=list.length?list.sort((a,b)=>kPart(a).localeCompare(kPart(b),'ko')).map(p=>{const s=pStatus(p);return `<tr><td class="code">${esc(kPart(p))}</td><td>${esc(p.name)}${p.spec?'<br><span class="note">'+esc(p.spec)+'</span>':''}</td><td>${esc(p.cat)}<br><span class="note">${esc(p.src)}</span></td><td>${esc(p.mat)}</td><td class="n">${fmt(p.need)}</td><td class="n">${fmt(p.stock)}</td><td><span class="chip ${s[1]}">${s[0]}${toMake(p)?' '+fmt(toMake(p)):''}</span></td><td>${p.use.map(u=>{const t=toolById(u.tool);return t?`${esc(kTool(t))}×${u.q}`:''}).filter(Boolean).join(', ')||'<span class="note">없음</span>'}</td><td><div class="acts"><button class="btn sm" data-edit-part="${p.id}">수정</button><button class="btn sm del" data-del-part="${p.id}">삭제</button></div></td></tr>`}).join('')
-    :'<tr><td colspan="9" class="empty">조건에 맞는 부품이 없습니다.</td></tr>';
+  const list=S.parts.filter(p=>(!cf||p.cat===cf)&&(!sf||pStatus(p)[2]===sf)&&(!q||[kPart(p),p.cat,p.mat,p.loc].join(' ').toLowerCase().includes(q)));
+  const cnt={};for(const p of S.parts){const c=cnt[p.cat]||(cnt[p.cat]=[0,0]);c[0]++;c[1]+=+p.stock||0}
+  $('catSum').innerHTML=Object.entries(cnt).sort((a,b)=>catIdx(a[0])-catIdx(b[0])).map(([c,[k,n]])=>`<div class="cat"><b>${fmt(n)}</b>${esc(c)} · ${k}규격</div>`).join('');
+  $('partTbl').tBodies[0].innerHTML=list.length?list.sort(byPart).map(p=>{const s=pStatus(p);return `<tr><td><span class="code">${esc(p.name)}</span>${p.spec?'<span class="spec">'+esc(p.spec)+'</span>':''}</td><td>${esc(p.cat)}<br><span class="note">${esc(p.src)}</span></td><td>${esc(p.mat)}</td><td class="n"><b>${fmt(p.stock)}</b> ${esc(p.unit||'EA')}</td><td class="n">${fmt(p.safe)}</td><td>${esc(p.loc)}</td><td><span class="chip ${s[1]}">${s[0]}</span></td><td><div class="acts"><button class="btn sm" data-edit-part="${p.id}">수정</button><button class="btn sm del" data-del-part="${p.id}">삭제</button></div></td></tr>`}).join('')
+    :'<tr><td colspan="8" class="empty">조건에 맞는 부품이 없습니다.</td></tr>';
 }
 function renderLogs(){
   const f=$('logF').value;
   const rows=[...S.logs].reverse().filter(l=>!f||l.obj===f);
-  $('logTbl').tBodies[0].innerHTML=rows.length?rows.map(l=>{const it=l.obj==='tool'?toolById(l.item):partById(l.item);const nm=it?(l.obj==='tool'?`<span class="code">${esc(kTool(it))}</span> ${esc(it.name)}`:`<span class="code">${esc(kPart(it))}</span> ${esc(it.name)}`):'<span class="note">삭제된 품목</span>';
+  $('logTbl').tBodies[0].innerHTML=rows.length?rows.map(l=>{const it=l.obj==='tool'?toolById(l.item):partById(l.item);const nm=it?(l.obj==='tool'?`<span class="code">${esc(kTool(it))}</span> ${esc(it.name)}`:`<span class="code">${esc(it.name)}</span>${it.spec?'<span class="spec">'+esc(it.spec)+'</span>':''}`):'<span class="note">삭제된 품목</span>';
     return `<tr><td style="white-space:nowrap">${esc(l.date)}</td><td>${l.obj==='tool'?'공구':'부품'}</td><td><span class="chip ${l.kind==='in'?'c-ok':'c-warn'}">${l.kind==='in'?'입고':'출고'}</span></td><td>${nm}</td><td class="n">${l.kind==='in'?'+':'−'}${fmt(l.qty)}</td><td>${esc(l.vendor)}</td><td class="n">${l.price?fmt(l.price):''}</td><td class="n">${l.price?fmt(l.price*l.qty):''}</td><td>${esc(l.who)}</td><td>${esc(l.memo)}</td><td><button class="btn sm del" data-del-log="${l.id}">취소</button></td></tr>`}).join('')
     :'<tr><td colspan="11" class="empty">기록이 없습니다.</td></tr>';
   const buy=rows.filter(l=>l.kind==='in'&&l.price);
@@ -391,18 +387,11 @@ $('toolCancel').addEventListener('click',resetTool);
 $('p_cat').innerHTML=CATS.map(c=>`<option>${c}</option>`).join('');
 $('partC').innerHTML='<option value="">전체 분류</option>'+CATS.map(c=>`<option>${c}</option>`).join('');
 let editPart=null;
-const PF=['kcode','name','cat','spec','mat','need','stock','safe','src','loc','proc'];
-function useRow(u={}){const d=document.createElement('div');d.className='urow';
-  d.innerHTML=`<select aria-label="공구">${S.tools.map(t=>`<option value="${t.id}" ${t.id===u.tool?'selected':''}>${esc(kTool(t))} · ${esc(t.spec||t.name)}</option>`).join('')}</select><input type="number" min="0" step="0.01" value="${u.q??1}" aria-label="부품 1개당 소요량"><button class="btn del" type="button" aria-label="공구 빼기">×</button>`;
-  d.querySelector('button').onclick=()=>d.remove();$('usage').append(d)}
-function resetPart(){editPart=null;$('partForm').reset();$('usage').innerHTML='';useRow();$('partFormTitle').textContent='부품 등록'}
-$('addUse').addEventListener('click',()=>useRow());
+const PF=['name','cat','spec','mat','stock','safe','unit','src','loc','vendor'];
+function resetPart(){editPart=null;$('partForm').reset();$('p_unit').value='EA';$('partFormTitle').textContent='부품 등록'}
 $('partForm').addEventListener('submit',e=>{e.preventDefault();
-  const o={};PF.forEach(k=>o[k]=$('p_'+k).value.trim());['need','stock','safe'].forEach(k=>o[k]=+o[k]||0);
-  o.use=[...$('usage').children].map(r=>({tool:r.querySelector('select').value,q:+r.querySelector('input').value||0})).filter(u=>u.tool&&u.q>0);
-  const cur=editPart?partById(editPart):null;
-  if(!o.kcode){if(cur&&cur.cat===o.cat)o.kcode=kPart(cur);else{const used=new Set(S.parts.filter(p=>p.id!==editPart).map(kPart));let n=1;while(used.has(o.cat+'-'+String(n).padStart(3,'0')))n++;o.kcode=o.cat+'-'+String(n).padStart(3,'0')}}
-  if(S.parts.some(p=>p.id!==editPart&&kPart(p)===o.kcode)){flash('partMsg','같은 한글 표기의 부품이 이미 있습니다.');return}
+  const o={};PF.forEach(k=>o[k]=$('p_'+k).value.trim());o.stock=+o.stock||0;o.safe=+o.safe||0;o.unit=o.unit||'EA';
+  if(S.parts.some(p=>p.id!==editPart&&kPart(p)===kPart(o))){flash('partMsg','같은 부품명·규격이 이미 있습니다.');return}
   if(editPart)Object.assign(partById(editPart),o);else S.parts.push({id:uid(),...o});
   flash('partMsg',editPart?'수정했습니다.':'등록했습니다.');resetPart();all()});
 $('partCancel').addEventListener('click',resetPart);
@@ -415,12 +404,12 @@ $('logF').addEventListener('change',renderLogs);
 $('logForm').addEventListener('submit',e=>{e.preventDefault();
   const obj=$('l_obj').value,it=obj==='tool'?toolById($('l_item').value):partById($('l_item').value),q=+$('l_qty').value||0,k=$('l_kind').value;
   if(!it||q<=0)return;
-  if(k==='out'&&q>(+it.stock||0)){flash('logMsg','현재고('+fmt(it.stock)+')보다 많이 출고할 수 없습니다.');return}
+  if(k==='out'&&q>(+it.stock||0)){flash('logMsg','재고('+fmt(it.stock)+')보다 많이 출고할 수 없습니다.');return}
   it.stock=(+it.stock||0)+(k==='in'?q:-q);
   const vendor=$('l_vendor').value.trim(),price=+$('l_price').value||0;
   if(obj==='tool'&&k==='in'){if(vendor)it.vendor=vendor;if(price)it.price=price}
   S.logs.push({id:uid(),date:$('l_date').value,obj,kind:k,item:it.id,qty:q,vendor,price,who:$('l_who').value.trim(),memo:$('l_memo').value.trim()});
-  flash('logMsg',`${obj==='tool'?kTool(it):kPart(it)} 현재고 ${fmt(it.stock)}(으)로 변경`);$('l_qty').value='';$('l_memo').value='';$('l_price').value='';$('l_vendor').value='';calcTotal();all()});
+  flash('logMsg',`${obj==='tool'?kTool(it):kPart(it)} 재고 ${fmt(it.stock)}(으)로 변경`);$('l_qty').value='';$('l_memo').value='';$('l_price').value='';$('l_vendor').value='';calcTotal();all()});
 function calcTotal(){const q=+$('l_qty').value||0,p=+$('l_price').value||0;$('l_total').value=q&&p?fmt(q*p)+' 원':''}
 ['l_qty','l_price'].forEach(id=>$(id).addEventListener('input',calcTotal));
 $('l_item').addEventListener('change',()=>{if($('l_obj').value==='tool'&&$('l_kind').value==='in'){const t=toolById($('l_item').value);if(t){if(!$('l_vendor').value)$('l_vendor').value=t.vendor||'';if(!$('l_price').value&&t.price)$('l_price').value=t.price;calcTotal()}}});
@@ -429,8 +418,8 @@ $('l_item').addEventListener('change',()=>{if($('l_obj').value==='tool'&&$('l_ki
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;
   const twice=()=>{if(b.dataset.arm)return true;b.dataset.arm=1;const old=b.textContent;b.textContent='한 번 더';setTimeout(()=>{if(b.isConnected){delete b.dataset.arm;b.textContent=old}},2500);return false};
   if(d.editTool){const t=toolById(d.editTool);editTool=t.id;TF.forEach(k=>$('t_'+k).value=t[k]??'');$('toolFormTitle').textContent='공구 수정 · '+kTool(t);$('t_code').focus()}
-  else if(d.delTool){if(!twice())return;S.tools=S.tools.filter(t=>t.id!==d.delTool);S.parts.forEach(p=>p.use=p.use.filter(u=>u.tool!==d.delTool));all()}
-  else if(d.editPart){const p=partById(d.editPart);editPart=p.id;PF.forEach(k=>$('p_'+k).value=p[k]??'');$('p_kcode').value=kPart(p);$('usage').innerHTML='';(p.use.length?p.use:[{}]).forEach(useRow);$('partFormTitle').textContent='부품 수정 · '+kPart(p);$('p_name').focus()}
+  else if(d.delTool){if(!twice())return;S.tools=S.tools.filter(t=>t.id!==d.delTool);S.parts.forEach(p=>{if(p.use)p.use=p.use.filter(u=>u.tool!==d.delTool)});all()}
+  else if(d.editPart){const p=partById(d.editPart);editPart=p.id;PF.forEach(k=>$('p_'+k).value=p[k]??'');if(!CATS.includes(p.cat))$('p_cat').value='기타 표준품';$('partFormTitle').textContent='부품 수정 · '+kPart(p);$('p_name').focus()}
   else if(d.delPart){if(!twice())return;S.parts=S.parts.filter(p=>p.id!==d.delPart);all()}
   else if(d.delLog){if(!twice())return;const l=S.logs.find(x=>x.id===d.delLog),it=l.obj==='tool'?toolById(l.item):partById(l.item);if(it)it.stock=Math.max(0,(+it.stock||0)+(l.kind==='in'?-l.qty:l.qty));S.logs=S.logs.filter(x=>x.id!==l.id);all()}
 });
@@ -439,17 +428,17 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
 const csv=rows=>rows.map(r=>r.map(v=>{v=String(v??'');return /["\t\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join('\t')).join('\n');
 $('bkCopy').addEventListener('click',()=>copy(JSON.stringify(S),'bkMsg'));
 $('csvTools').addEventListener('click',()=>copy(csv([['공구코드','한글표기','공구명','종류','규격','재질','현재고','안전재고','단위','보관위치','공급업체','단가','상태'],...S.tools.map(t=>[t.code,kTool(t),t.name,t.type,t.spec,t.mat,t.stock,t.safe,t.unit,t.loc,t.vendor,t.price,tStatus(t)[0]])]),'bkMsg'));
-$('csvParts').addEventListener('click',()=>copy(csv([['한글표기','부품명','분류','규격','재질','필요수량','현재고','안전재고','부족수량','조달','보관위치','가공공정','상태'],...S.parts.map(p=>[kPart(p),p.name,p.cat,p.spec,p.mat,p.need,p.stock,p.safe,toMake(p),p.src,p.loc,p.proc,pStatus(p)[0]])]),'bkMsg'));
+$('csvParts').addEventListener('click',()=>copy(csv([['부품명','분류','규격','재질','재고','안전재고','단위','조달','보관위치','공급업체','상태'],...[...S.parts].sort(byPart).map(p=>[p.name,p.cat,p.spec,p.mat,p.stock,p.safe,p.unit||'EA',p.src,p.loc,p.vendor||'',pStatus(p)[0]])]),'bkMsg'));
 $('csvLogs').addEventListener('click',()=>copy(csv([['일자','대상','구분','품목코드','한글표기','품목명','수량','구입처','단가','금액','작업자','비고'],...S.logs.map(l=>{const it=l.obj==='tool'?toolById(l.item):partById(l.item);return [l.date,l.obj==='tool'?'공구':'부품',l.kind==='in'?'입고':'출고',it?(it.code||it.no):'',it?(l.obj==='tool'?kTool(it):kPart(it)):'',it?it.name:'',l.qty,l.vendor||'',l.price||'',l.price?l.qty*l.price:'',l.who,l.memo]})]),'bkMsg'));
 $('copyStock').addEventListener('click',()=>{const {parts,tools}=prepLists();
-  copy('■ 부품 현재고\n'+parts.map(p=>`- ${kPart(p)} ${p.name}${p.spec?' '+p.spec:''}: ${p.stock}개`).join('\n')+'\n■ 공구 현재고\n'+tools.map(t=>`- ${kTool(t)} ${t.name} ${t.spec}: ${t.stock}${t.unit||'EA'}`).join('\n'),'prepMsg')});
+  copy('■ 부품 재고\n'+parts.map(p=>`- ${kPart(p)} ${p.stock}${p.unit||'EA'}`).join('\n')+'\n■ 공구 재고\n'+tools.map(t=>`- ${kTool(t)} ${t.name} ${t.spec}: ${t.stock}${t.unit||'EA'}`).join('\n'),'prepMsg')});
 $('bkLoad').addEventListener('click',()=>{try{const o=JSON.parse($('bkText').value);if(!Array.isArray(o.tools)||!Array.isArray(o.parts))throw 0;o.logs=o.logs||[];S=o;resetTool();resetPart();all();flash('bkMsg','복원했습니다.')}catch(e){flash('bkMsg','백업 형식이 올바르지 않습니다.')}});
 $('reset').addEventListener('click',e=>{const b=e.currentTarget;if(!b.dataset.arm){b.dataset.arm=1;b.textContent='정말 초기화할까요? 한 번 더';setTimeout(()=>{delete b.dataset.arm;b.textContent='샘플 데이터로 초기화'},3000);return}
   S=sample();resetTool();resetPart();all();flash('bkMsg','샘플 데이터로 초기화했습니다.')});
 
 $('l_date').value=today();
 const renderOnly=()=>{renderKpis();fillSelects();renderPrep();renderTools();renderParts();renderLogs()};
-function start(){resetTool();all();resetPart();show(location.hash.slice(1))}
+function start(){resetTool();resetPart();all();show(location.hash.slice(1))}
 if(!EMBED)start();
 else{
   document.body.style.visibility='hidden';
@@ -460,7 +449,7 @@ else{
     const m=e.data||{};if(m.type!=='inv-data')return;
     if(!started){
       started=true;
-      if(validInv(m.data)){S=m.data;S.logs=S.logs||[];lastSent=JSON.stringify(S)}
+      if(validInv(m.data)){S=m.data;S.logs=S.logs||[];lastSent=JSON.stringify(S);dropOldSample(S)}
       if(m.who&&!$('l_who').value)$('l_who').value=m.who;
       start();document.body.style.visibility='';
     }else if(validInv(m.data)){

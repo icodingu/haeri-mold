@@ -712,7 +712,7 @@ function route() {
 function viewInventory() {
   return `<div class="inv-head"><div><h2 class="inv-t">공구·부품 재고관리</h2><div class="muted">작업 전에 부족한 공구와 부품을 미리 찾습니다. 입력한 내용은 팀원과 함께 보고 자동 저장됩니다.</div></div>
     <button class="btn ghost sm" data-act="invPrd">기획서(PRD) 보기</button></div>
-    <iframe id="invFrame" class="inv-frame" src="inventory.html?v=1" title="공구·부품 재고관리"></iframe>`;
+    <iframe id="invFrame" class="inv-frame" src="inventory.html?v=2" title="공구·부품 재고관리"></iframe>`;
 }
 function sendInv() {
   const f = $('#invFrame'); if (!f || !f.contentWindow || !DB) return;
