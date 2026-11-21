@@ -239,32 +239,42 @@ function diffSummary(a, b) {
   if (js(a.settings || {}) !== js(b.settings || {})) out.push('설정 변경');
   if (js(a.cloudFiles || {}) !== js(b.cloudFiles || {})) out.push('연결 파일 업로드');
   if (js(a.fileMeta || {}) !== js(b.fileMeta || {})) out.push('첨부파일 변경');
+  if (js(a.inventory || null) !== js(b.inventory || null)) out.push('공구·부품 재고 변경');
   return out.join(' / ');
 }
 // 두 사람이 동시에 저장했을 때: 금형(도번)·일정 단위로 합침. 같은 금형을 둘 다 고쳤으면 내 변경 우선
 function merge3(base, mine, theirs) {
   base = base || {}; const js = JSON.stringify, conflicts = [];
   const out = jclone(theirs);
-  const list = (f, k) => {
-    const B = new Map((base[f] || []).map(x => [x[k], x])), M = new Map((mine[f] || []).map(x => [x[k], x])), T = new Map((theirs[f] || []).map(x => [x[k], x]));
+  const mergeList = (bl, ml, tl, k, label) => {
+    const B = new Map((bl || []).map(x => [x[k], x])), M = new Map((ml || []).map(x => [x[k], x])), T = new Map((tl || []).map(x => [x[k], x]));
     const keys = new Set([...T.keys(), ...M.keys(), ...B.keys()]), res = [];
     keys.forEach(key => {
       const b = B.get(key), m = M.get(key), t = T.get(key);
       const mc = js(m) !== js(b), tc = js(t) !== js(b);
-      if (mc && tc && js(m) !== js(t)) conflicts.push(f === 'projects' ? key : '달력 일정');
+      if (mc && tc && js(m) !== js(t)) conflicts.push(label || key);
       const v = mc ? m : t;
       if (v !== undefined) res.push(v);
     });
-    out[f] = res;
+    return res;
   };
+  const list = (f, k) => { out[f] = mergeList(base[f], mine[f], theirs[f], k, f === 'projects' ? '' : '달력 일정'); };
   list('projects', 'dwgNo'); list('schedules', 'id');
+  // 공구·부품 재고: 공구·부품·입출고 기록을 항목(id)별로 합침
+  if (js(mine.inventory) !== js(base.inventory)) {
+    if (!theirs.inventory || js(theirs.inventory) === js(base.inventory)) out.inventory = mine.inventory;
+    else if (mine.inventory) {
+      const bi = base.inventory || {}, mi = mine.inventory, ti = theirs.inventory;
+      out.inventory = { tools: mergeList(bi.tools, mi.tools, ti.tools, 'id', '공구 재고'), parts: mergeList(bi.parts, mi.parts, ti.parts, 'id', '부품 재고'), logs: mergeList(bi.logs, mi.logs, ti.logs, 'id', '입출고 기록') };
+    }
+  }
   const map = f => {
     const b = base[f] || {}, m = mine[f] || {}, t = theirs[f] || {}, o = {};
     new Set([...Object.keys(b), ...Object.keys(m), ...Object.keys(t)]).forEach(k => { const v = js(m[k]) !== js(b[k]) ? m[k] : t[k]; if (v !== undefined) o[k] = v; });
     out[f] = o;
   };
   map('fileMeta'); map('cloudFiles');
-  Object.keys(mine).forEach(k => { if (!['projects', 'schedules', 'fileMeta', 'cloudFiles', 'rev'].includes(k) && js(mine[k]) !== js(base[k])) out[k] = mine[k]; });
+  Object.keys(mine).forEach(k => { if (!['projects', 'schedules', 'fileMeta', 'cloudFiles', 'inventory', 'rev'].includes(k) && js(mine[k]) !== js(base[k])) out[k] = mine[k]; });
   return { merged: out, conflicts: [...new Set(conflicts)] };
 }
 async function push() {
@@ -324,6 +334,7 @@ function busyUI() {
   return !!$('#modalRoot .mback') || !!(a && a.closest && a.closest('#main') && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
 }
 function rerender() {
+  if ($('#invFrame')) { applySettings(); return sendInv(); }   // 재고 화면은 다시 그리지 않고 새 데이터만 전달
   const main = $('#main'), y = main ? main.scrollTop : 0, wy = window.scrollY;
   applySettings(); route();
   if (main) main.scrollTop = y; window.scrollTo(0, wy);
@@ -691,10 +702,50 @@ function route() {
   else if (view === 'vendors') html = viewVendors();
   else if (view === 'docs') html = viewDocs();
   else if (view === 'settings') html = viewSettings();
+  else if (view === 'inventory') html = viewInventory();
   else html = viewProjects(true);
   main.innerHTML = `<div class="fade">${html}</div>`;
   hydrateStoredImages(main);
   if (view === 'settings') fillStorageInfo();
+}
+/* ---------------- 공구·부품 재고 (inventory.html을 안에 띄우고 데이터는 DB.inventory에 저장) ---------------- */
+function viewInventory() {
+  return `<div class="inv-head"><div><h2 class="inv-t">공구·부품 재고관리</h2><div class="muted">작업 전에 부족한 공구와 부품을 미리 찾습니다. 입력한 내용은 팀원과 함께 보고 자동 저장됩니다.</div></div>
+    <button class="btn ghost sm" data-act="invPrd">기획서(PRD) 보기</button></div>
+    <iframe id="invFrame" class="inv-frame" src="inventory.html?v=1" title="공구·부품 재고관리"></iframe>`;
+}
+function sendInv() {
+  const f = $('#invFrame'); if (!f || !f.contentWindow || !DB) return;
+  f.contentWindow.postMessage({ type: 'inv-data', data: DB.inventory ? jclone(DB.inventory) : null, who: who() }, location.origin);
+}
+window.addEventListener('message', e => {
+  const f = $('#invFrame');
+  if (e.origin !== location.origin || !f || e.source !== f.contentWindow || !DB) return;
+  const m = e.data || {};
+  if (m.type === 'inv-ready') return sendInv();
+  if (m.type === 'inv-save' && m.data && Array.isArray(m.data.tools) && Array.isArray(m.data.parts)) {
+    if (READONLY) { toast(READONLY, 'err'); return sendInv(); }
+    DB.inventory = jclone(m.data); save('공구·부품 재고');
+  }
+});
+function mdToHtml(md) {
+  const inl = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  let html = '', lst = '';
+  const close = () => { if (lst) { html += `</${lst}>`; lst = ''; } };
+  md.split(/\r?\n/).forEach(line => {
+    let m;
+    if ((m = line.match(/^(#{1,3})\s+(.*)/))) { close(); html += `<h${m[1].length + 2}>${inl(m[2])}</h${m[1].length + 2}>`; }
+    else if ((m = line.match(/^(\s*)-\s+(.*)/))) { if (lst !== 'ul') { close(); html += '<ul>'; lst = 'ul'; } html += `<li${m[1].length ? ' class="sub"' : ''}>${inl(m[2])}</li>`; }
+    else if ((m = line.match(/^\d+\.\s+(.*)/))) { if (lst !== 'ol') { close(); html += '<ol>'; lst = 'ol'; } html += `<li>${inl(m[1])}</li>`; }
+    else if (line.trim()) { close(); html += `<p>${inl(line)}</p>`; }
+  });
+  close(); return html;
+}
+async function showInvPrd() {
+  let md;
+  try { const r = await fetch('docs/inventory_prd.md?v=1', { cache: 'no-cache' }); if (!r.ok) throw new Error(r.status); md = await r.text(); }
+  catch (e) { return toast('기획서를 불러오지 못했습니다: ' + e.message, 'err'); }
+  modal('공구·부품 재고관리 기획서 (PRD)', `<div class="md">${mdToHtml(md)}</div>`, [{ text: '닫기' }]);
 }
 const go = h => { if (location.hash === h) route(); else location.hash = h; };
 
@@ -1383,6 +1434,7 @@ document.addEventListener('click', async e => {
       return;
     }
     case 'export': return exportJSON();
+    case 'invPrd': return showInvPrd();
     case 'linkBackup': return BackupDir.connect();
     case 'import': $('#importInput').value = ''; return $('#importInput').click();
     case 'saveSettings': {
