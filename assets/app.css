@@ -180,7 +180,8 @@ select{cursor:pointer}
 @media (max-width:1400px){.kpis{grid-template-columns:repeat(3,1fr)}.totals{grid-template-columns:repeat(3,1fr)}.grid2{grid-template-columns:1fr}}
 
 /* 선택한 금형 메뉴 */
-.navp{margin:10px 0;padding:10px 0 6px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.navp{margin:2px 0 8px 18px;padding:6px 0 4px;border-left:2px solid var(--line)}
+.navp a{padding-left:16px!important}
 .navp-h{display:flex;justify-content:space-between;align-items:center;padding:0 14px;color:var(--tx3);font-size:11px;letter-spacing:.04em}
 .navp-x{background:none;border:0;color:var(--tx3);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px}.navp-x:hover{color:#fff;background:var(--panel)}
 .navp-t{padding:4px 14px 8px;font-family:var(--mono);color:var(--ac);font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
