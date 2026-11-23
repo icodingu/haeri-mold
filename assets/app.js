@@ -714,7 +714,7 @@ function renderNav(view, id, tab) {
       <div class="navp-t" title="${esc(dispName(p))}">${esc(dispName(p))}</div>
       ${M.map(([k, i, t]) => `<a href="#/project/${pid}/${k}" class="${on === k ? 'on' : ''}"><i>${i}</i>${t}</a>`).join('')}</div>`;
   }
-  $$('#nav > a').forEach(a => a.classList.toggle('on', a.dataset.nav === view || (a.dataset.nav === 'dashboard' && view === 'projects')));
+  $$('#nav > a').forEach(a => a.classList.toggle('on', a.dataset.nav === view || (a.dataset.nav === 'projects' && view === 'project')));
 }
 
 function route() {
@@ -778,17 +778,36 @@ function mdToHtml(md) {
 function viewRepair() {
   return `<div class="inv-head"><div><h2 class="inv-t">금형수리이력</h2><div class="muted">수리·치수수정·설계변경 이력을 3D 부위와 함께 남기고, 계속 고칠지 다시 만들지 판단합니다. 입력한 내용은 팀원과 함께 보고 자동 저장됩니다.</div></div>
     <button class="btn ghost sm" data-act="repPrd">기획서(PRD) 보기</button></div>
-    <iframe id="repFrame" class="inv-frame rep-frame" src="repair.html?v=1" title="금형수리이력"></iframe>`;
+    <iframe id="repFrame" class="inv-frame rep-frame" src="repair.html?v=3" title="금형수리이력"></iframe>`;
+}
+// 금형수리이력 안에 대시보드와 같은 3D 뷰어 파일을 띄움 (한 번 받은 파일은 다시 받지 않음)
+const repViewerCache = {};
+async function sendRepViewer(id) {
+  const f = $('#repFrame'); if (!f || !f.contentWindow) return;
+  const reply = o => f.contentWindow && f.contentWindow.postMessage(Object.assign({ type: 'hist-viewer', mold_id: id }, o), location.origin);
+  const p = (DB.projects || []).find(x => x.dwgNo === id), path = p && p.viewerPath;
+  if (!path) return reply({ err: '이 금형은 3D 뷰어가 아직 없습니다. 대시보드의 3D 뷰어 탭에서 뷰어 파일을 연결하세요.' });
+  if (repViewerCache[path]) return reply({ url: repViewerCache[path] });
+  if (isExternal(path)) { const u = resolvePath(path); return reply(u ? { url: u } : { err: '허용되지 않는 뷰어 경로입니다.' }); }
+  const ent = cloudEntry(path);
+  if (!ent) return reply({ err: '3D 뷰어 파일이 아직 클라우드에 올라가 있지 않습니다.' });
+  try {
+    const url = URL.createObjectURL(await cloudBlob(ent.key, safeDecode(path.split(/[\\/]/).pop())));
+    repViewerCache[path] = url; reply({ url });
+  } catch (e) { reply({ err: '3D 뷰어를 불러오지 못했습니다: ' + (e.message || e) }); }
 }
 function sendRep() {
   const f = $('#repFrame'); if (!f || !f.contentWindow || !DB) return;
-  f.contentWindow.postMessage({ type: 'hist-data', data: DB.repairHist ? jclone(DB.repairHist) : null, who: who() }, location.origin);
+  const projects = (DB.projects || []).map(p => ({ dwgNo: p.dwgNo, model: p.model, cavities: p.cavities, resin: p.resin, maker: p.maker, designer: p.designer }));
+  const pj = JSON.stringify(projects), changed = pj !== sendRep.lastProjects; sendRep.lastProjects = pj;
+  f.contentWindow.postMessage({ type: 'hist-data', data: DB.repairHist ? jclone(DB.repairHist) : null, projects, projectsChanged: changed, who: who() }, location.origin);
 }
 window.addEventListener('message', e => {
   const f = $('#repFrame');
   if (e.origin !== location.origin || !f || e.source !== f.contentWindow || !DB) return;
   const m = e.data || {};
   if (m.type === 'hist-ready') return sendRep();
+  if (m.type === 'hist-viewer') return sendRepViewer(String(m.mold_id || ''));
   if (m.type === 'hist-save' && m.data && Array.isArray(m.data.molds) && Array.isArray(m.data.events)) {
     if (READONLY) { toast(READONLY, 'err'); return sendRep(); }
     DB.repairHist = jclone(m.data); save('금형수리이력');
@@ -1017,7 +1036,7 @@ function viewDetail(p, tab) {
   else if (tab === 'docs') body = tabDocs(p);
   else if (tab === 'vendors') body = tabVendors(p);
   else body = tabOverview(p);
-  return `<div class="muted" style="margin-bottom:10px;font-size:12px"><a href="#/dashboard">대시보드</a> › ${esc(dispName(p))}</div>
+  return `<div class="muted" style="margin-bottom:10px;font-size:12px"><a href="#/projects">금형 목록</a> › ${esc(dispName(p))}</div>
   <div class="dhead"><div class="thumb">${thumbHTML(p)}</div>
     <div><div class="t1">${esc(p.dwgNo)}</div><div class="t2">${esc(p.model) || '<span class="muted">모델명 미입력</span>'}</div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${badge(p.status)}<span class="muted" style="font-size:12px">표시명 ${esc(dispName(p))} · 최종 수정 ${fmtDT(p.updatedAt)}</span></div></div>
