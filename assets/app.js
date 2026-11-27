@@ -140,7 +140,7 @@ function fireProjects() {
     mk('HR26-0701', '하부', 'HR26-0701_내화채움슬리브_하부_3D뷰어.html', ['0701(40mm추가).stp'], 'HR26-0701-다리 40.0 늘림-261022.dwg',
       '내화채움 슬리브 하부 사출금형. 1×2 캐비티, PP. 몰드베이스 3560 SA.'),
     mk('HR26-0702', '상부', 'HR26-0702_내화채움슬리브_상부_3D뷰어.html', ['0702(40mm추가)_210.stp', '0702(40mm추가)_200.stp', '0702(40mm추가)_180.stp'], 'HR26-0702-다리 40.0 늘림-261022.dwg',
-      '내화채움 슬리브 상부 사출금형. 1×2 캐비티, PP. 몰드베이스 3560 SC.\n금형은 하나이고 코어(C-2, L-3, L-4 핀, 긴 밀핀)만 바꿔 끼워 제품 높이 H210 / H200 / H180을 만든다.'),
+      '내화채움 슬리브 상부 사출금형. 1×2 캐비티, PP. 몰드베이스 3560 SC.\n금형은 하나이고 코어(C-2, L-3, L-4 핀, 긴 밀핀)와 C-2가 들어가는 중간 형판(68.8t / 58.6t / 38.2t)을 바꿔 끼워 제품 높이 H210 / H200 / H180을 만든다.'),
   ];
 }
 const fireDir = (no, part) => `molds/${no}_내화채움슬리브_${part}/`;
@@ -158,6 +158,14 @@ function fixFireViewerPaths() {
   }
   DB.fireViewerInDash = true;
   save('내화채움 슬리브 뷰어·대표이미지 경로 갱신');
+}
+// 0702: 높이 교체 부품에 중간 형판 추가 (개요 문구) — 한 번만
+function fix0702MidPlate() {
+  if (READONLY || DB.fix0702Mid) return;
+  const p = DB.projects.find(x => x.dwgNo === 'HR26-0702');
+  if (p && (p.summary || '').includes('금형은 하나이고 코어(C-2, L-3, L-4 핀, 긴 밀핀)만 바꿔 끼워')) { p.summary = p.summary.replace('금형은 하나이고 코어(C-2, L-3, L-4 핀, 긴 밀핀)만 바꿔 끼워', '금형은 하나이고 코어(C-2, L-3, L-4 핀, 긴 밀핀)와 C-2가 들어가는 중간 형판(68.8t / 58.6t / 38.2t)을 바꿔 끼워'); p.updatedAt = nowISO(); }
+  DB.fix0702Mid = true;
+  save('0702 중간 형판 교체 문구');
 }
 // 만능봉수: 대표이미지를 제품으로, 뷰어를 대시보드 폴더 안(molds/…)으로 — 한 번만
 function fixHarryPaths() {
@@ -1750,6 +1758,7 @@ async function start() {
     addFireProjects();
     fixFireViewerPaths();
     fixHarryPaths();
+    fix0702MidPlate();
     subscribe();
   }
   applySettings();
