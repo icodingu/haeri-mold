@@ -282,3 +282,32 @@ select{cursor:pointer}
 .xtabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
 .xsheet table{border-collapse:collapse;font-size:12px}
 .xsheet td{border:1px solid #ccc;padding:3px 6px;white-space:nowrap;color:#222}
+
+/* 제작비 행 끌어서 순서 바꾸기 (2026-11-27) */
+.dragc{width:40px}
+.dragh{display:inline-flex;align-items:center;justify-content:center;width:28px;height:30px;border-radius:6px;cursor:grab;color:var(--tx3);font-size:18px;line-height:1;touch-action:none;user-select:none}
+.dragh:hover,.dragh:focus-visible{background:rgba(127,127,127,.15);color:var(--tx)}
+tr.dragging{opacity:.9;outline:2px solid var(--ac);outline-offset:-2px;background:var(--bg2)}
+body.rowdrag,body.rowdrag *{cursor:grabbing!important;user-select:none}
+.totals.t1,#costTotals{grid-template-columns:minmax(0,320px)}
+
+/* 제작비 총 합계 + 지출 막대 (2026-11-27) */
+.csumtop{display:grid;grid-template-columns:minmax(220px,280px) 1fr;gap:16px;margin:4px 0 16px}
+.ctot{background:var(--acbg);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:center;gap:6px}
+.ctot .k{font-size:13px;color:var(--tx2)}.ctot .k span{font-size:11px;color:var(--tx3);margin-left:4px}
+.ctot .v{font-size:28px;font-weight:700;color:var(--ac);font-variant-numeric:tabular-nums}
+.ctot .d{font-size:12px;color:var(--tx3)}
+.cbars{border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
+.cbh{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}.cbh b{font-size:13.5px}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--tx2);padding:4px 10px;font-size:12px;cursor:pointer}
+.seg button.on{background:var(--acbg);color:var(--ac);font-weight:600}
+.cbans{font-size:12.5px;color:var(--tx2);margin-bottom:8px}.cbans b{color:var(--tx)}
+.cbl{display:grid;gap:6px;max-height:220px;overflow:auto}
+.cbr{display:grid;grid-template-columns:minmax(70px,130px) 1fr auto;gap:10px;align-items:center;font-size:12.5px}
+.cbk{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx2)}
+.cbt{height:14px;background:rgba(127,127,127,.12);border-radius:4px;overflow:hidden}
+.cbt i{display:block;height:100%;background:var(--tx3);border-radius:4px}
+.cbr.top .cbt i{background:var(--ac)}.cbr.top .cbk{color:var(--tx);font-weight:600}
+.cbv{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}.cbv em{font-style:normal;color:var(--tx3);margin-left:4px;display:inline-block;min-width:42px}
+@media (max-width:760px){.csumtop{grid-template-columns:1fr}}

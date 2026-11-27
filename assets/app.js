@@ -860,7 +860,7 @@ function filteredProjects() {
     dwgAsc: (a, b) => a.dwgNo.localeCompare(b.dwgNo, 'ko', { numeric: true }),
     start: (a, b) => (b.startDate || '').localeCompare(a.startDate || ''),
     model: (a, b) => a.model.localeCompare(b.model, 'ko'),
-    cost: (a, b) => projCost(b).confirmed - projCost(a).confirmed,
+    cost: (a, b) => projCost(b).quote - projCost(a).quote,
   };
   return arr.sort(S[L.sort] || S.updated);
 }
@@ -873,18 +873,18 @@ function projectListHTML() {
   const rows = arr.slice((L.page - 1) * PAGE, L.page * PAGE);
   let body;
   if (L.mode === 'table') {
-    body = `<div class="tblwrap"><table class="tbl"><thead><tr><th></th><th>도번</th><th>모델명</th><th>상태</th><th>작업 시작</th><th>작업 완료</th><th>제작업체</th><th class="r">확정 제작비</th><th>최종 수정</th></tr></thead><tbody>
+    body = `<div class="tblwrap"><table class="tbl"><thead><tr><th></th><th>도번</th><th>모델명</th><th>상태</th><th>작업 시작</th><th>작업 완료</th><th>제작업체</th><th class="r">견적비</th><th>최종 수정</th></tr></thead><tbody>
       ${rows.map(p => { const c = projCost(p); return `<tr class="click" data-open="${esc(p.dwgNo)}">
         <td><div class="tmini">${thumbHTML(p)}</div></td><td class="mono" style="color:var(--ac)">${esc(p.dwgNo)}</td><td><b>${esc(p.model)}</b></td><td>${badge(p.status)}</td>
         <td>${esc(p.startDate) || '<span class="muted">—</span>'}</td><td>${esc(p.endDate) || '<span class="muted">—</span>'}</td><td>${esc(p.maker) || '<span class="muted">—</span>'}</td>
-        <td class="r money">${won(c.confirmed)}</td><td class="muted">${fmtDT(p.updatedAt)}</td></tr>`; }).join('')}
+        <td class="r money">${c.quotes ? won(c.quote) : '—'}</td><td class="muted">${fmtDT(p.updatedAt)}</td></tr>`; }).join('')}
       </tbody></table></div>`;
   } else {
     body = `<div class="pgrid">${rows.map(p => { const c = projCost(p); return `<div class="pcard" data-open="${esc(p.dwgNo)}">
       <div class="thumb">${thumbHTML(p)}<span class="st">${badge(p.status)}</span></div>
       <div class="pbody"><div class="pno">${esc(p.dwgNo)}</div><div class="pname">${esc(p.model) || '<span class="muted">모델명 미입력</span>'}</div>
         <div class="pmeta"><span>작업 기간</span><span>${esc(p.startDate) || '—'} ~ ${esc(p.endDate) || '—'}</span><span>제작업체</span><span>${esc(p.maker) || '—'}</span></div>
-        <div class="pfoot"><span>확정 <span class="money">${won(c.confirmed)}</span></span><span>수정 ${fmtD(p.updatedAt)}</span></div></div></div>`; }).join('')}</div>`;
+        <div class="pfoot"><span>견적 <span class="money">${c.quotes ? won(c.quote) : '—'}</span></span><span>수정 ${fmtD(p.updatedAt)}</span></div></div></div>`; }).join('')}</div>`;
   }
   const pager = pages > 1 ? `<div class="pager"><button class="btn sm" data-page="${L.page - 1}" ${L.page <= 1 ? 'disabled' : ''}>‹ 이전</button> ${L.page} / ${pages} 페이지 · ${arr.length}건 <button class="btn sm" data-page="${L.page + 1}" ${L.page >= pages ? 'disabled' : ''}>다음 ›</button></div>` : `<div class="pager">${arr.length}건</div>`;
   return body + pager;
@@ -909,7 +909,7 @@ function viewProjects(isDash) {
       <div class="search"><input type="search" id="fQ" placeholder="도번, 모델명, 협력업체 검색" value="${esc(L.q)}"></div>
       <select id="fYear"><option value="">전체 연도</option>${years.map(y => `<option ${L.year === y ? 'selected' : ''}>${y}</option>`).join('')}</select>
       <select id="fStatus"><option value="">전체 상태</option>${STATUSES.map(s => `<option ${L.status === s ? 'selected' : ''}>${s}</option>`).join('')}<option value="__none" ${L.status === '__none' ? 'selected' : ''}>미입력·확인 필요</option></select>
-      <select id="fSort">${[['updated', '최근 수정순'], ['dwgDesc', '도번 내림차순'], ['dwgAsc', '도번 오름차순'], ['start', '작업 시작일순'], ['model', '모델명순'], ['cost', '확정 제작비순']].map(([v, t]) => `<option value="${v}" ${L.sort === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
+      <select id="fSort">${[['updated', '최근 수정순'], ['dwgDesc', '도번 내림차순'], ['dwgAsc', '도번 오름차순'], ['start', '작업 시작일순'], ['model', '모델명순'], ['cost', '견적비순']].map(([v, t]) => `<option value="${v}" ${L.sort === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
       <div class="seg"><button data-mode="card" class="${L.mode === 'card' ? 'on' : ''}">▦ 카드</button><button data-mode="table" class="${L.mode === 'table' ? 'on' : ''}">☰ 표</button></div>
     </div>
     <div id="plist">${projectListHTML()}</div></div>`;
@@ -949,6 +949,7 @@ function dayModal(date) {
   const pal = (cur, attr) => `<div class="cpick">${CAL_PALETTE.map(([c, n]) => `<button type="button" class="csw sm${c === cur ? ' on' : ''}" ${attr}="${c}" style="--c:${c}" title="${n}" aria-label="${n}"></button>`).join('')}<label class="ccustom" title="다른 색 직접 고르기"><input type="color" data-ecc value="${esc(cur)}" aria-label="다른 색 직접 고르기">직접</label></div>`;
   const editHTML = x => `<div class="sitem sedit" data-sid="${esc(x.id)}"><div class="form" style="width:100%">
       <label>관련 금형<select data-ef="dwgNo"><option value="">(선택 안 함)</option>${DB.projects.map(p => `<option value="${esc(p.dwgNo)}" ${p.dwgNo === x.dwgNo ? 'selected' : ''}>${esc(dispName(p))}</option>`).join('')}</select></label>
+      <label>날짜<input type="date" data-ef="date" value="${esc(x.date)}"></label>
       <label>일정 내용 *<input type="text" data-ef="title" value="${esc(x.dwgNo && x.title.startsWith(x.dwgNo + ' ') ? x.title.slice(x.dwgNo.length + 1) : x.title)}" autocomplete="off"></label>
       <div class="full"><div class="clabel">색</div>${pal(schedColor(x), 'data-esw')}<input type="hidden" data-ef="color" value="${esc(schedColor(x))}"></div>
       <div class="full" style="display:flex;gap:6px;justify-content:flex-end;align-items:center"><span class="hint err" data-eerr style="margin-right:auto"></span><button type="button" class="btn sm" data-scancel>취소</button><button type="button" class="btn sm pri" data-ssave="${esc(x.id)}">수정 저장</button></div></div></div>`;
@@ -964,7 +965,7 @@ function dayModal(date) {
       <label>관련 금형<select id="sd_p"><option value="">(선택 안 함)</option>${DB.projects.map(p => `<option value="${esc(p.dwgNo)}" ${p.dwgNo === cur ? 'selected' : ''}>${esc(dispName(p))}</option>`).join('')}</select></label>
       <label>일정 내용 *<input type="text" id="sd_t" placeholder="예: 가공, 시사출, 몰드베이스 입고" autocomplete="off"></label>
       <div class="full"><div class="clabel">색</div><div class="cpick" id="sd_c" role="radiogroup" aria-label="일정 색">${CAL_PALETTE.map(([c, n]) => `<button type="button" class="csw${c === UI.calColor ? ' on' : ''}" data-csw="${c}" style="--c:${c}" title="${n}" aria-label="${n}" role="radio" aria-checked="${c === UI.calColor}"></button>`).join('')}<label class="ccustom" title="다른 색 직접 고르기"><input type="color" id="sd_cc" value="${esc(UI.calColor)}" aria-label="다른 색 직접 고르기">직접</label></div></div>
-      <span class="hint full">금형을 고르면 달력에 ‘도번 + 내용’으로 표시됩니다 (예: HR26-0701 가공). 등록한 일정의 내용·금형·색은 위 목록의 ‘수정’으로 바꿀 수 있습니다.</span>
+      <span class="hint full">금형을 고르면 달력에 ‘도번 + 내용’으로 표시됩니다 (예: HR26-0701 가공). 등록한 일정의 날짜·내용·금형·색은 위 목록의 ‘수정’으로 바꿀 수 있습니다.</span>
       <span class="hint err full" id="sd_err"></span></div>`, [
     { text: '닫기' },
     { text: '일정 추가', cls: 'pri', fn: r => {
@@ -1015,9 +1016,13 @@ function dayModal(date) {
       const x = DB.schedules.find(s => s.id === bs.dataset.ssave), ed = bs.closest('.sedit'); if (!x) { editing = null; return redraw(); }
       const title = ed.querySelector('[data-ef="title"]').value.trim();
       if (!title) { ed.querySelector('[data-eerr]').textContent = '일정 내용을 입력하세요.'; return; }
-      const bk = snap(); x.title = title; x.dwgNo = ed.querySelector('[data-ef="dwgNo"]').value; x.color = ed.querySelector('[data-ef="color"]').value;
+      const nd = ed.querySelector('[data-ef="date"]').value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(nd)) { ed.querySelector('[data-eerr]').textContent = '날짜를 고르세요.'; return; }
+      const bk = snap(); x.title = title; x.dwgNo = ed.querySelector('[data-ef="dwgNo"]').value; x.color = ed.querySelector('[data-ef="color"]').value; x.date = nd;
       if (!save()) { restore(bk); return; }
-      editing = null; redraw(); toast('일정을 수정했습니다'); return;
+      editing = null; redraw();
+      if (nd !== date) { const [, mm, dd] = nd.split('-').map(Number); toast(`${mm}월 ${dd}일로 옮겼습니다`); } else toast('일정을 수정했습니다');
+      return;
     }
     const b = e.target.closest('[data-sdel]'); if (!b || deleting) return;
     const x = DB.schedules.find(s => s.id === b.dataset.sdel); if (!x) return;
@@ -1065,9 +1070,7 @@ function tabOverview(p) {
   </div><div>
     <div class="panel"><h3>제작비 요약 <a href="#/project/${encodeURIComponent(p.dwgNo)}/costs" style="font-size:12px;font-weight:500">상세 ›</a></h3>
       <div class="csum">
-        <div class="cs"><span>견적비 <em>VAT 별도</em></span><b>${won(c.quote)}</b></div>
-        <div class="cs main"><span>확정 제작비</span><b>${isNum(p.costFinal) ? won(c.confirmed) : '<i>미입력</i>'}</b></div>
-        <div class="cs"><span>실제 지급액</span><b>${isNum(p.costPaid) ? won(c.paid) : '<i>미입력</i>'}</b></div></div></div>
+        <div class="cs main"><span>견적비 <em>VAT 별도</em></span><b>${c.quotes ? won(c.quote) : '<i>미입력</i>'}</b></div></div></div>
     <div class="panel"><h3>주요 특이사항 <a href="#/project/${encodeURIComponent(p.dwgNo)}/history" style="font-size:12px;font-weight:500">전체 이력 ›</a></h3>
       ${important.length ? important.map(l => `<div class="issue" data-go="#/project/${encodeURIComponent(p.dwgNo)}/history"><span class="badge ${LOG_BADGE[l.state]}">${esc(l.state)}</span><div><div class="it">${esc(l.title)}</div><div class="im">${esc(l.category)} · ${esc(l.vendor || '업체 미지정')} · ${esc(l.date || '날짜 미입력')}</div></div></div>`).join('') : '<div class="muted">현재 해결 중인 문제 없음</div>'}
       ${solved.length ? `<div class="issub">해결된 문제 이력 <span>${solved.length}건</span></div>${solved.map(l => `<div class="issue done" data-go="#/project/${encodeURIComponent(p.dwgNo)}/history"><span class="badge ${LOG_BADGE[l.state]}">해결</span><div><div class="it">${esc(l.title)}</div><div class="im">${esc(l.category)} · ${esc(l.vendor || '업체 미지정')} · ${esc(l.date || '날짜 미입력')}</div>${l.action ? `<div class="ia">조치: ${esc(l.action)}</div>` : ''}</div></div>`).join('')}` : ''}</div>
@@ -1077,18 +1080,36 @@ function costRow(c) {
   const opt = (arr, v) => arr.map(s => `<option ${s === v ? 'selected' : ''}>${s}</option>`).join('');
   const m = v => isNum(v) ? v.toLocaleString('ko-KR') : '';
   return `<tr data-cid="${esc(c.id)}">
+    <td class="c dragc"><span class="dragh" data-drag="${esc(c.id)}" tabindex="0" role="button" title="끌어서 순서 바꾸기 (키보드: Alt+↑↓)" aria-label="끌어서 순서 바꾸기">⠿</span></td>
     <td><input data-f="item" value="${esc(c.item)}" placeholder="항목"></td>
     <td><input data-f="vendor" value="${esc(c.vendor)}" placeholder="업체명"></td>
     <td><input class="num" data-f="quote" data-money value="${m(c.quote)}" placeholder="—"></td>
     <td>${quoteCell(c)}</td>
     <td><input data-f="note" value="${esc(c.note)}" placeholder="비고" title="${esc(c.note)}"></td>
-    <td class="c"><div class="mvcell"><button class="btn icon sm" data-act="mvCost" data-dir="-1" data-cid="${esc(c.id)}" title="위로">▲</button><button class="btn icon sm" data-act="mvCost" data-dir="1" data-cid="${esc(c.id)}" title="아래로">▼</button><button class="btn icon sm danger" data-act="delCost" data-cid="${esc(c.id)}" title="행 삭제">✕</button></div></td></tr>`;
+    <td class="c"><button class="btn icon sm danger" data-act="delCost" data-cid="${esc(c.id)}" title="행 삭제">✕</button></td></tr>`;
 }
+// 제작비 요약: 총 합계 + 어디에 많이 들었는지 (항목별/업체별 막대, 큰 순서)
+function costSummaryHTML(p) {
+  const by = UI.costBy === 'vendor' ? 'vendor' : 'item';
+  const g = new Map(); let total = 0, n = 0;
+  (p.costs || []).forEach(c => { if (!isNum(c.quote)) return; const k = String(c[by] || '').trim() || (by === 'item' ? '(항목 없음)' : '(업체 없음)'); g.set(k, (g.get(k) || 0) + c.quote); total += c.quote; n++; });
+  const arr = [...g.entries()].sort((a, b) => b[1] - a[1]);
+  const max = arr.length ? Math.max(...arr.map(x => x[1])) : 0;
+  const pct = v => total ? (v / total * 100) : 0;
+  const top = arr[0];
+  const head = `<div class="csumtop"><div class="ctot"><div class="k">총 합계 <span>견적금액 합 · VAT 별도</span></div><div class="v" id="costQuoteSum">${won(total)}</div>
+      <div class="d">VAT 포함 ${won(Math.round(total * 1.1))} · ${n}건</div></div>
+    <div class="cbars"><div class="cbh"><b>어디에 가장 많이 들었나?</b><span class="seg"><button type="button" class="${by === 'item' ? 'on' : ''}" data-costby="item">항목별</button><button type="button" class="${by === 'vendor' ? 'on' : ''}" data-costby="vendor">업체별</button></span></div>
+      ${top ? `<div class="cbans">가장 큰 지출: <b>${esc(top[0])}</b> · 전체의 <b>${pct(top[1]).toFixed(0)}%</b> (${won(top[1])})</div>` : ''}
+      <div class="cbl" role="img" aria-label="${esc(by === 'item' ? '항목별' : '업체별')} 견적금액. ${top ? esc(top[0]) + '이 가장 큼 ' + pct(top[1]).toFixed(0) + '%' : '자료 없음'}">
+      ${arr.length ? arr.map(([k, v], i) => `<div class="cbr${i === 0 ? ' top' : ''}"><span class="cbk" title="${esc(k)}">${esc(k)}</span><span class="cbt"><i style="width:${max ? Math.max(2, v / max * 100) : 0}%"></i></span><span class="cbv">${won(v)} <em>${pct(v).toFixed(1)}%</em></span></div>`).join('')
+        : '<div class="muted" style="padding:8px 0">견적금액을 입력하면 여기에 보입니다.</div>'}</div></div></div>`;
+  return head;
+}
+function refreshCostSummary(p) { const el = $('#costSummary'); if (el) el.innerHTML = costSummaryHTML(p); }
 function costTotalsHTML(p) {
   const c = projCost(p), m = v => isNum(v) ? v.toLocaleString('ko-KR') : '';
-  return `<div class="tot"><div class="k">견적비 <span>VAT 별도 · 자동 합계</span></div><div class="v" id="costQuoteSum">${won(c.quote)}</div></div>
-    <div class="tot main"><div class="k">확정 제작비 <span>직접 입력</span></div><div class="totin"><b>₩</b><input class="num" data-pf="costFinal" data-money value="${m(p.costFinal)}" placeholder="금액 입력"></div></div>
-    <div class="tot"><div class="k">실제 지급액 <span>직접 입력</span></div><div class="totin"><b>₩</b><input class="num" data-pf="costPaid" data-money value="${m(p.costPaid)}" placeholder="금액 입력"></div></div>`;
+  return `<div class="tot main"><div class="k">견적비 <span>VAT 별도 · 자동 합계</span></div><div class="v" id="costQuoteSum">${won(c.quote)}</div></div>`;
 }
 function quoteCell(c) {
   const id = esc(c.id), fid = c.quoteFileId, m = fid ? (DB.fileMeta || {})[fid] : null;
@@ -1097,11 +1118,11 @@ function quoteCell(c) {
 }
 function tabCosts(p) {
   return `<div class="panel"><h3>제작비 및 견적 <span><button class="btn sm pri" data-act="addCost">＋ 행 추가</button></span></h3>
-    <div class="tblwrap"><table class="tbl ctbl"><thead><tr><th style="width:19%">항목</th><th style="width:17%">업체명</th><th class="r" style="width:16%">견적금액 (₩, VAT 별도)</th><th style="width:19%">견적서</th><th>비고</th><th style="width:104px" class="c">순서</th></tr></thead>
+    <div id="costSummary">${costSummaryHTML(p)}</div>
+    <div class="tblwrap"><table class="tbl ctbl"><thead><tr><th style="width:40px" class="c" title="끌어서 순서 바꾸기">순서</th><th style="width:19%">항목</th><th style="width:17%">업체명</th><th class="r" style="width:16%">견적금액 (₩, VAT 별도)</th><th style="width:19%">견적서</th><th>비고</th><th style="width:48px" class="c">삭제</th></tr></thead>
     <tbody id="costBody">${p.costs.map(costRow).join('') || ''}</tbody></table>${p.costs.length ? '' : '<div class="empty">제작비 항목이 없습니다. ‘행 추가’를 누르세요.</div>'}</div>
-    <div class="totals" id="costTotals">${costTotalsHTML(p)}</div>
-    <div class="note">· 견적금액은 <b>VAT 별도</b> 금액으로 적습니다. 견적비는 견적금액 합계로 자동 계산됩니다.<br>
-    · 확정 제작비와 실제 지급액은 위 칸에 직접 입력합니다.<br>
+    <div class="note">· 견적금액은 <b>VAT 별도</b> 금액으로 적습니다. 총 합계와 위 막대는 입력하는 대로 바로 바뀝니다. 항목 이름을 ‘재료비’, ‘가공비’처럼 같게 적으면 한 막대로 합쳐집니다.<br>
+    · 순서는 행 왼쪽 <b>⠿</b> 손잡이를 잡고 위아래로 끌어다 놓으면 바뀝니다.<br>
     · 견적서는 <b>PDF · 사진(JPG·PNG 등) · 엑셀</b>로 올릴 수 있고, <b>견적서 보기</b>로 대시보드 안에서 바로 열립니다. 입력 즉시 자동 저장됩니다.</div></div>`;
 }
 function sortedLogs(p) {
@@ -1144,9 +1165,8 @@ function viewCosts() {
   const rows = [];
   DB.projects.forEach(p => p.costs.forEach(c => rows.push({ p, c })));
   return `<div class="page-h"><div><h1>제작비 관리</h1><div class="sub">모든 금형의 제작비 행 모음 · 수정은 각 금형의 ‘제작비·견적’ 탭에서</div></div></div>
-  <div class="totals t3" style="margin:0 0 18px">
-    <div class="tot"><div class="k">견적비 <span>VAT 별도</span></div><div class="v">${won(all.quote)}</div></div><div class="tot main"><div class="k">확정 제작비</div><div class="v">${won(all.confirmed)}</div></div>
-    <div class="tot"><div class="k">실제 지급액</div><div class="v">${won(all.paid)}</div></div></div>
+  <div class="totals t1" style="margin:0 0 18px">
+    <div class="tot main"><div class="k">견적비 합계 <span>VAT 별도</span></div><div class="v">${won(all.quote)}</div></div></div>
   <div class="tblwrap"><table class="tbl"><thead><tr><th>금형</th><th>항목</th><th>업체</th><th class="r">견적금액 (VAT 별도)</th><th class="c">견적서</th><th>비고</th></tr></thead><tbody>
   ${rows.map(({ p, c }) => `<tr class="click" data-go="#/project/${encodeURIComponent(p.dwgNo)}/costs"><td class="mono" style="color:var(--ac)">${esc(dispName(p))}</td><td>${esc(c.item)}</td><td>${esc(c.vendor)}</td><td class="r money">${won(c.quote)}</td><td class="c">${c.quoteFileId ? '<span class="tag">📄 첨부</span>' : '<span class="muted">—</span>'}</td><td class="muted">${esc(c.note)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">제작비 항목 없음</td></tr>'}
   </tbody></table></div>
@@ -1580,6 +1600,10 @@ function findDoc(btn) {
   return p ? { p, d: p.docs.find(x => x.id === btn.dataset.did) } : {};
 }
 
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-costby]'); if (!b) return;
+  UI.costBy = b.dataset.costby; const p = curProject(); if (p) refreshCostSummary(p);
+});
 document.addEventListener('click', async e => {
   const t = e.target.closest('[data-act],[data-open],[data-go],[data-mode],[data-page],[data-search],[data-day],[data-cal]');
   if (!t) return;
@@ -1716,7 +1740,7 @@ document.addEventListener('change', e => {
     else c[el.dataset.f] = el.value;
     touch(p);
     if (!save()) return; // 실패 표시는 save()가 함. 입력값은 화면에 남겨 다시 시도 가능
-    const qs = $('#costQuoteSum'); if (qs) qs.textContent = won(projCost(p).quote);
+    refreshCostSummary(p);
   }
 });
 document.addEventListener('input', e => {
@@ -1808,5 +1832,44 @@ async function boot() {
 }
 if (!window.supabase || !CFG.url) { document.body.innerHTML = '<p style="padding:40px;font-family:sans-serif">클라우드 연결 모듈을 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침하세요.</p>'; return; }
 boot();
+
+/* ---------------- 제작비 행 끌어서 순서 바꾸기 ---------------- */
+function commitCostOrder(tb) {
+  const p = getP($('#tabBody') && $('#tabBody').dataset.id); if (!p) return;
+  const ids = [...tb.querySelectorAll('tr[data-cid]')].map(r => r.dataset.cid);
+  if (ids.join() === p.costs.map(c => c.id).join()) return;
+  const b = snap(); const map = new Map(p.costs.map(c => [c.id, c]));
+  p.costs = ids.map(i => map.get(i)).filter(Boolean).concat(p.costs.filter(c => !ids.includes(c.id))); touch(p);
+  if (!save()) { restore(b); route(); return; }
+  toast('순서를 바꿨습니다');
+}
+document.addEventListener('pointerdown', e => {
+  const h = e.target.closest && e.target.closest('[data-drag]'); if (!h || e.button > 0) return;
+  const row = h.closest('tr'), tb = row && row.parentElement; if (!tb) return;
+  e.preventDefault(); try { h.setPointerCapture(e.pointerId); } catch (er) {}
+  row.classList.add('dragging'); document.body.classList.add('rowdrag');
+  const move = ev => {
+    const y = ev.clientY;
+    const rows = [...tb.querySelectorAll('tr[data-cid]')].filter(r => r !== row);
+    const after = rows.find(r => { const bb = r.getBoundingClientRect(); return y < bb.top + bb.height / 2; });
+    if (after) { if (row.nextElementSibling !== after) tb.insertBefore(row, after); } else if (tb.lastElementChild !== row) tb.appendChild(row);
+    if (y < 60) window.scrollBy(0, -12); else if (y > innerHeight - 60) window.scrollBy(0, 12);
+  };
+  const up = () => {
+    h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up);
+    row.classList.remove('dragging'); document.body.classList.remove('rowdrag');
+    commitCostOrder(tb);
+  };
+  h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
+});
+document.addEventListener('keydown', e => {
+  const h = e.target.closest && e.target.closest('[data-drag]'); if (!h || !e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+  e.preventDefault(); const row = h.closest('tr'), tb = row.parentElement;
+  if (e.key === 'ArrowUp' && row.previousElementSibling) tb.insertBefore(row, row.previousElementSibling);
+  else if (e.key === 'ArrowDown' && row.nextElementSibling) tb.insertBefore(row.nextElementSibling, row);
+  else return;
+  const id = row.dataset.cid; commitCostOrder(tb);
+  const nh = document.querySelector(`[data-drag="${CSS.escape(id)}"]`); if (nh) nh.focus();
+});
 window.__HAERI = { get DB() { return DB; }, Cloud, SB, merge3, normPath, calcCosts, calcAll, suggestDwg, FileStore, save, getP, projectForm, logForm, confirmBox, sanitizeProject, resolvePath, safeDecode }; // 테스트·디버그용
 })();
