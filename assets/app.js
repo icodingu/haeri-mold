@@ -1871,5 +1871,55 @@ document.addEventListener('keydown', e => {
   const id = row.dataset.cid; commitCostOrder(tb);
   const nh = document.querySelector(`[data-drag="${CSS.escape(id)}"]`); if (nh) nh.focus();
 });
+
+/* ---------------- 화면 테마 · 글꼴 (이 컴퓨터에 저장) ---------------- */
+const THEMES = [['navy', '남색', '#0d1420', '#2fc6c0', '#e3e9f3'], ['light', '밝은 회색', '#e8ecf1', '#0a7a75', '#1b2431'], ['paper', '베이지', '#ebe5d8', '#a14f1c', '#2a251f']];
+const FONTS = [['pretendard', '깔끔', '"Pretendard Variable",sans-serif', null],
+  ['round', '둥근', '"NanumSquareRound",sans-serif', 'https://hangeul.pstatic.net/hangeul_static/css/nanum-square-round.css'],
+  ['plex', '반듯', '"IBM Plex Sans KR",sans-serif', 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap']];
+const curTheme = () => document.documentElement.dataset.theme || 'navy';
+const curFont = () => document.documentElement.dataset.font || 'pretendard';
+function fontLink(doc, key) {
+  const f = FONTS.find(x => x[0] === key); if (!f || !f[3]) return;
+  if (doc.querySelector(`link[data-hfont="${key}"]`)) return;
+  const l = doc.createElement('link'); l.rel = 'stylesheet'; l.href = f[3]; l.dataset.hfont = key; doc.head.appendChild(l);
+}
+// 안쪽 화면(iframe)에 같은 색·글꼴 입히기
+function themeFrame(fr) {
+  let doc; try { doc = fr.contentDocument; } catch (e) { return; } if (!doc || !doc.head) return;
+  const cs = getComputedStyle(document.documentElement), v = k => cs.getPropertyValue(k).trim();
+  const t = curTheme(), light = t !== 'navy', font = v('--font');
+  FONTS.forEach(f => { if (f[0] === curFont()) fontLink(doc, f[0]); });
+  if (fr.id === 'repFrame') doc.documentElement.dataset.theme = light ? 'light' : 'dark';
+  let st = doc.getElementById('haeriTheme'); if (!st) { st = doc.createElement('style'); st.id = 'haeriTheme'; doc.head.appendChild(st); }
+  const vars = fr.id === 'invFrame'
+    ? (light ? `--bg:${v('--bg')};--panel:${v('--panel')};--panel2:${v('--panel2')};--line:${v('--line')};--line2:${v('--line2')};--ink:${v('--tx')};--mut:${v('--tx2')};--dim:${v('--tx3')};--ac:${v('--ac')};--acbg:${v('--acbg')};--ok:${v('--ok')};--warn:${v('--warn')};--red:${v('--bad')};--blue:${v('--ac2')};color-scheme:light;` : '')
+    : (light ? `--bg:${v('--bg')};--surface:${v('--panel')};--ink:${v('--tx')};--muted:${v('--tx2')};--line:${v('--line')};--accent:${v('--ac')};--accent-soft:${v('--acbg')};` : '');
+  st.textContent = `:root,:root[data-theme]{${vars}--font-body:${font};}body,button,input,select,textarea{font-family:${font}!important}`;
+}
+function applyLook(theme, font) {
+  const d = document.documentElement;
+  if (theme) { if (theme === 'navy') delete d.dataset.theme; else d.dataset.theme = theme; try { localStorage.setItem('haeri_theme', theme); } catch (e) {} }
+  if (font) { fontLink(document, font); d.dataset.font = font; try { localStorage.setItem('haeri_font', font); } catch (e) {} }
+  document.querySelectorAll('#invFrame,#repFrame').forEach(themeFrame);
+  const pop = document.getElementById('thPop'); if (pop) pop.outerHTML = thPopHTML();
+}
+function thPopHTML() {
+  return `<div class="thpop" id="thPop" role="dialog" aria-label="화면 설정">
+    <h4>색</h4><div class="thopts">${THEMES.map(([k, n, bg, ac, tx]) => `<button type="button" class="thopt${curTheme() === k ? ' on' : ''}" data-theme-pick="${k}" aria-pressed="${curTheme() === k}"><span class="sw" style="background:${bg}"><b style="background:${tx}"></b><i style="background:${ac}"></i></span><span>${n}</span></button>`).join('')}</div>
+    <h4>글꼴</h4><div class="thopts">${FONTS.map(([k, n, ff]) => `<button type="button" class="thopt fnopt${curFont() === k ? ' on' : ''}" data-font-pick="${k}" aria-pressed="${curFont() === k}"><span class="fs" style="font-family:${ff}">가나 12</span><span style="font-family:${ff}">${n}</span></button>`).join('')}</div>
+    <div class="thhint">고른 색·글꼴은 이 컴퓨터에 저장돼 다음에도 그대로 열립니다.</div></div>`;
+}
+fontLink(document, curFont());
+document.addEventListener('click', e => {
+  const tb = e.target.closest && e.target.closest('#thBtn');
+  const pop = document.getElementById('thPop');
+  if (tb) { if (pop) { pop.remove(); tb.setAttribute('aria-expanded', 'false'); } else { FONTS.forEach(f => fontLink(document, f[0])); tb.parentElement.insertAdjacentHTML('beforeend', thPopHTML()); tb.setAttribute('aria-expanded', 'true'); } return; }
+  const tp = e.target.closest && e.target.closest('[data-theme-pick]'); if (tp) return applyLook(tp.dataset.themePick, null);
+  const fp = e.target.closest && e.target.closest('[data-font-pick]'); if (fp) return applyLook(null, fp.dataset.fontPick);
+  if (pop && !e.target.closest('#thPop')) { pop.remove(); const b = document.getElementById('thBtn'); if (b) b.setAttribute('aria-expanded', 'false'); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { const p = document.getElementById('thPop'); if (p) p.remove(); } });
+document.addEventListener('load', e => { const t = e.target; if (t && (t.id === 'invFrame' || t.id === 'repFrame')) themeFrame(t); }, true);
 window.__HAERI = { get DB() { return DB; }, Cloud, SB, merge3, normPath, calcCosts, calcAll, suggestDwg, FileStore, save, getP, projectForm, logForm, confirmBox, sanitizeProject, resolvePath, safeDecode }; // 테스트·디버그용
 })();

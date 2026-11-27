@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>HAERI | MOLD MANAGEMENT SYSTEM</title>
+<script>try{var d=document.documentElement,t=localStorage.getItem('haeri_theme'),f=localStorage.getItem('haeri_font')||'pretendard';if(t==='light'||t==='paper')d.dataset.theme=t;d.dataset.font=f;}catch(e){}</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
@@ -17,6 +19,7 @@
     </div>
     <div class="top-right">
       <div class="save-state" id="saveState">연결 중…</div>
+      <div class="thbtn"><button class="btn ghost sm" id="thBtn" type="button" title="화면 색·글꼴 바꾸기" aria-haspopup="true" aria-expanded="false">🎨 화면</button></div>
       <button class="btn ghost sm" data-act="export" title="JSON 백업 파일 내려받기">⤓ 백업</button>
       <div class="user"><span class="avatar" id="userAvatar">·</span><span id="userName"></span></div>
       <button class="btn ghost sm" data-act="logout" title="로그아웃">로그아웃</button>
