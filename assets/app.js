@@ -1082,7 +1082,7 @@ function costRow(c) {
     <td><input class="num" data-f="quote" data-money value="${m(c.quote)}" placeholder="—"></td>
     <td>${quoteCell(c)}</td>
     <td><input data-f="note" value="${esc(c.note)}" placeholder="비고" title="${esc(c.note)}"></td>
-    <td class="c"><button class="btn icon sm danger" data-act="delCost" data-cid="${esc(c.id)}" title="행 삭제">✕</button></td></tr>`;
+    <td class="c"><div class="mvcell"><button class="btn icon sm" data-act="mvCost" data-dir="-1" data-cid="${esc(c.id)}" title="위로">▲</button><button class="btn icon sm" data-act="mvCost" data-dir="1" data-cid="${esc(c.id)}" title="아래로">▼</button><button class="btn icon sm danger" data-act="delCost" data-cid="${esc(c.id)}" title="행 삭제">✕</button></div></td></tr>`;
 }
 function costTotalsHTML(p) {
   const c = projCost(p), m = v => isNum(v) ? v.toLocaleString('ko-KR') : '';
@@ -1093,16 +1093,16 @@ function costTotalsHTML(p) {
 function quoteCell(c) {
   const id = esc(c.id), fid = c.quoteFileId, m = fid ? (DB.fileMeta || {})[fid] : null;
   return fid ? `<div class="qcell"><button class="btn sm qbtn" data-act="viewQuote" data-cid="${id}" title="${esc(m ? m.name : '견적서')}">📄 견적서 보기</button><button class="btn icon sm" data-act="upQuote" data-cid="${id}" title="다른 파일로 바꾸기">⟳</button><button class="btn icon sm danger" data-act="delQuote" data-cid="${id}" title="견적서 지우기">✕</button></div>`
-    : `<button class="btn sm qadd" data-act="upQuote" data-cid="${id}">＋ PDF 올리기</button>`;
+    : `<button class="btn sm qadd" data-act="upQuote" data-cid="${id}" title="PDF · 사진(JPG·PNG) · 엑셀">＋ 견적서 올리기</button>`;
 }
 function tabCosts(p) {
   return `<div class="panel"><h3>제작비 및 견적 <span><button class="btn sm pri" data-act="addCost">＋ 행 추가</button></span></h3>
-    <div class="tblwrap"><table class="tbl ctbl"><thead><tr><th style="width:19%">항목</th><th style="width:17%">업체명</th><th class="r" style="width:16%">견적금액 (₩, VAT 별도)</th><th style="width:19%">견적서</th><th>비고</th><th style="width:40px"></th></tr></thead>
+    <div class="tblwrap"><table class="tbl ctbl"><thead><tr><th style="width:19%">항목</th><th style="width:17%">업체명</th><th class="r" style="width:16%">견적금액 (₩, VAT 별도)</th><th style="width:19%">견적서</th><th>비고</th><th style="width:104px" class="c">순서</th></tr></thead>
     <tbody id="costBody">${p.costs.map(costRow).join('') || ''}</tbody></table>${p.costs.length ? '' : '<div class="empty">제작비 항목이 없습니다. ‘행 추가’를 누르세요.</div>'}</div>
     <div class="totals" id="costTotals">${costTotalsHTML(p)}</div>
     <div class="note">· 견적금액은 <b>VAT 별도</b> 금액으로 적습니다. 견적비는 견적금액 합계로 자동 계산됩니다.<br>
     · 확정 제작비와 실제 지급액은 위 칸에 직접 입력합니다.<br>
-    · 견적서 PDF를 올리면 <b>견적서 보기</b>로 대시보드 안에서 바로 열립니다. 입력 즉시 자동 저장됩니다.</div></div>`;
+    · 견적서는 <b>PDF · 사진(JPG·PNG 등) · 엑셀</b>로 올릴 수 있고, <b>견적서 보기</b>로 대시보드 안에서 바로 열립니다. 입력 즉시 자동 저장됩니다.</div></div>`;
 }
 function sortedLogs(p) {
   return [...p.logs].sort((a, b) => {
@@ -1258,13 +1258,30 @@ async function fillStorageInfo() {
 
 /* ---------------- 견적서 PDF ---------------- */
 function quoteRow(p, cid) { return p && p.costs.find(x => x.id === cid); }
+function isQuoteFile(f) { return /\.(pdf|jpe?g|png|gif|webp|bmp|heic|xlsx|xlsm|xls|csv)$/i.test(f.name) || f.type === 'application/pdf' || /^image\//.test(f.type || ''); }
+function isXlsMeta(m) { return !!m && /\.(xlsx|xlsm|xls|csv)$/i.test(m.name || ''); }
+function loadXLSX() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'; sc.onload = () => window.XLSX ? res(window.XLSX) : rej(new Error('엑셀 보기 도구를 불러오지 못했습니다')); sc.onerror = () => rej(new Error('엑셀 보기 도구를 불러오지 못했습니다 (인터넷 연결 확인)')); document.head.appendChild(sc); });
+}
+async function showXls(box, blob) {
+  const X = await loadXLSX();
+  const wb = X.read(await blob.arrayBuffer(), { type: 'array' });
+  const names = wb.SheetNames;
+  const draw = n => { const t = box.querySelector('.xsheet'); if (t) t.innerHTML = X.utils.sheet_to_html(wb.Sheets[n], { header: '', footer: '' }); box.querySelectorAll('.xtabs button').forEach(b => b.classList.toggle('pri', b.dataset.sn === n)); };
+  box.classList.add('xls');
+  box.innerHTML = `${names.length > 1 ? `<div class="xtabs">${names.map(n => `<button class="btn sm" data-sn="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : ''}<div class="xsheet"></div>`;
+  box.querySelectorAll('.xtabs button').forEach(b => b.onclick = e => { e.stopPropagation(); draw(b.dataset.sn); });
+  draw(names[0]);
+}
+function isImgMeta(m) { return !!m && (/^image\//.test(m.type || '') || /\.(jpe?g|png|gif|webp|bmp|heic)$/i.test(m.name || '')); }
 function quoteName(c) { return [c.vendor, c.item].filter(Boolean).join(' · ') || '견적'; }
 function pickQuote(p, cid) {
   const c = quoteRow(p, cid); if (!c) return;
-  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'application/pdf,.pdf';
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'application/pdf,.pdf,image/*,.jpg,.jpeg,.png,.gif,.webp,.bmp,.heic,.xlsx,.xls,.xlsm,.csv';
   inp.onchange = async () => {
     const f = inp.files[0]; if (!f) return;
-    if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') return toast('PDF 파일만 올릴 수 있습니다.', 'warn');
+    if (!isQuoteFile(f)) return toast('PDF·사진(JPG·PNG 등)·엑셀 파일만 올릴 수 있습니다.', 'warn');
     toast('견적서 올리는 중…');
     try {
       const id = await FileStore.put(f);
@@ -1280,22 +1297,24 @@ function pickQuote(p, cid) {
 async function viewQuote(p, cid) {
   const c = quoteRow(p, cid), fid = c && c.quoteFileId; if (!fid) return;
   const name = quoteName(c);
-  const m = (DB.fileMeta || {})[fid], fname = m ? m.name : '견적서.pdf';
+  const m = (DB.fileMeta || {})[fid], fname = m ? m.name : '견적서';
   const root = modal(`${name} 견적서 · ${fname}`, '<div class="qview"><div class="muted">불러오는 중…</div></div>', [
     { text: '새 탭에서 열기', fn: () => { openStored(fid); return false; } },
     { text: '내려받기', fn: () => { openStored(fid, true); return false; } },
     { text: '닫기', cls: 'pri' }], { xl: true });
   try {
-    if (navigator.pdfViewerEnabled === false) {   // 휴대폰 등 창 안에서 PDF를 못 여는 브라우저
+    const isImg = isImgMeta(m), isXls = isXlsMeta(m);
+    if (!isImg && !isXls && navigator.pdfViewerEnabled === false) {   // 휴대폰 등 창 안에서 PDF를 못 여는 브라우저
       const box = root.querySelector('.qview');
       if (box) box.innerHTML = '<div class="qfall">이 브라우저는 창 안에서 PDF를 보여 주지 못합니다.<br>아래 <b>새 탭에서 열기</b> 또는 <b>내려받기</b>를 눌러 주세요.</div>';
       return;
     }
     const f = await FileStore.get(fid);
     if (!f) throw new Error('저장된 파일을 찾을 수 없습니다');
-    const url = URL.createObjectURL(new Blob([f.blob], { type: 'application/pdf' }));
+    if (isXls) { const box = root.querySelector('.qview'); if (box) await showXls(box, f.blob); return; }
+    const url = URL.createObjectURL(isImg ? f.blob : new Blob([f.blob], { type: 'application/pdf' }));
     const box = root.querySelector('.qview'); if (!box) return URL.revokeObjectURL(url);
-    box.innerHTML = `<iframe src="${url}" title="견적서"></iframe>`;
+    box.innerHTML = isImg ? `<img class="qimg" src="${url}" alt="견적서">` : `<iframe src="${url}" title="견적서"></iframe>`;
     setTimeout(() => URL.revokeObjectURL(url), 30 * 60000);
   } catch (e) { const box = root.querySelector('.qview'); if (box) box.innerHTML = `<div class="hint err">견적서를 열지 못했습니다: ${esc(e.message || e)}</div>`; }
 }
@@ -1601,6 +1620,14 @@ document.addEventListener('click', async e => {
       return;
     }
     case 'addCost': { const b = snap(); p.costs.push({ id: uid('c'), item: '', vendor: '', quote: null, confirmed: null, paid: null, vat: '미확인', status: '견적 요청', note: '', quoteFileId: null }); touch(p); if (!save()) { restore(b); return route(); } } route(); { const rows = $$('#costBody tr'); const last = rows[rows.length - 1]; if (last) last.querySelector('input').focus(); } return;
+    case 'mvCost': {
+      const i = p.costs.findIndex(x => x.id === t.dataset.cid), j = i + Number(t.dataset.dir);
+      if (i < 0 || j < 0 || j >= p.costs.length) return;
+      const b = snap(); [p.costs[i], p.costs[j]] = [p.costs[j], p.costs[i]]; touch(p);
+      if (!save()) { restore(b); return route(); }
+      route(); { const btn = document.querySelector(`#costBody tr[data-cid="${CSS.escape(t.dataset.cid)}"] [data-act="mvCost"][data-dir="${t.dataset.dir}"]`); if (btn) btn.focus(); }
+      return;
+    }
     case 'delCost': {
       const c = p.costs.find(x => x.id === t.dataset.cid);
       if (await confirmBox('행 삭제', `<b>${esc(c.item || '(항목 없음)')}</b> / ${esc(c.vendor || '업체 없음')} 행을 삭제할까요?`, '삭제', true)) { const b = snap(); p.costs = p.costs.filter(x => x !== c); touch(p); if (!save()) restore(b); else if (c.quoteFileId) gcFiles(); route(); }
