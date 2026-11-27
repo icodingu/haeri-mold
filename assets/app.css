@@ -325,39 +325,49 @@ html[data-theme="light"]{
   --top:#f3f5f8; --side:#eef1f5; --hi:#0c1420; --onac:#ffffff; --thumb:#e2e7ed; --evtx:#1b2431;
   color-scheme:light;
 }
-/* 3) 베이지(종이): 따뜻한 미색 바탕 · 진한 고동색 글자 · 주황 강조 */
-html[data-theme="paper"]{
-  --bg:#ebe5d8; --bg2:#f5f0e6; --panel:#f9f5ec; --panel2:#f0e9dc; --line:#dcd2bf; --line2:#c9bca6;
-  --tx:#2a251f; --tx2:#544b40; --tx3:#71665a;
-  --ac:#a14f1c; --ac2:#36649f; --acbg:rgba(161,79,28,.10);
-  --ok:#3b7d47; --warn:#93600e; --bad:#b53a2d; --mute:#71665a; --pur:#74559f;
-  --sh:0 4px 16px rgba(70,50,20,.08);
-  --top:#f2ece0; --side:#eee6d8; --hi:#1b1713; --onac:#ffffff; --thumb:#e6ddcd; --evtx:#2a251f;
+/* 3) 세이지: 연한 녹회색 바탕 · 짙은 숲색 강조 (눈 편함) */
+html[data-theme="sage"]{
+  --bg:#e1e8e2; --bg2:#edf2ed; --panel:#f5f8f4; --panel2:#e8eee8; --line:#cdd7ce; --line2:#b7c4b9;
+  --tx:#1c2a21; --tx2:#435347; --tx3:#5d6d61;
+  --ac:#2b6e4c; --ac2:#2d5f99; --acbg:rgba(43,110,76,.11);
+  --ok:#2f7d48; --warn:#8f600e; --bad:#b83a32; --mute:#5d6d61; --pur:#6b52a8;
+  --sh:0 4px 16px rgba(30,60,40,.08);
+  --top:#edf2ed; --side:#e7ede7; --hi:#0f1a13; --onac:#ffffff; --thumb:#dbe3dc; --evtx:#1c2a21;
   color-scheme:light;
 }
+/* 4) 차콜: 무채색 어두운 바탕 · 호박색 강조 */
+html[data-theme="charcoal"]{
+  --bg:#16171a; --bg2:#1c1d21; --panel:#202226; --panel2:#282a30; --line:#32353c; --line2:#41454e;
+  --tx:#e9e9eb; --tx2:#b3b6bd; --tx3:#868a94;
+  --ac:#f0a24a; --ac2:#6aa5ff; --acbg:rgba(240,162,74,.14);
+  --ok:#5fcf8a; --warn:#f0c04a; --bad:#ef6b6b; --mute:#868a94; --pur:#b39cf2;
+  --sh:0 6px 24px rgba(0,0,0,.35);
+  --top:#111214; --side:#131417; --hi:#ffffff; --onac:#2a1600; --thumb:#101113; --evtx:#ececee;
+  color-scheme:dark;
+}
 /* 밝은 테마 공통: 어두운 바탕용 연한 글자색을 진하게 */
-html[data-theme="light"] .b-design,html[data-theme="paper"] .b-design{background:rgba(107,79,200,.12);color:#5a3fb5}
-html[data-theme="light"] .b-prep,html[data-theme="paper"] .b-prep{background:rgba(37,96,196,.12);color:#1f54ad}
-html[data-theme="light"] .b-make,html[data-theme="paper"] .b-make{background:rgba(10,122,117,.12);color:#086661}
-html[data-theme="light"] .b-fix,html[data-theme="paper"] .b-fix{background:rgba(180,120,20,.14);color:#83540a}
-html[data-theme="light"] .b-done,html[data-theme="paper"] .b-done{background:rgba(23,132,79,.12);color:#136c41}
-html[data-theme="light"] .b-hold,html[data-theme="paper"] .b-hold{background:rgba(196,60,60,.12);color:#a83232}
-html[data-theme="light"] .b-none,html[data-theme="paper"] .b-none{background:rgba(99,110,128,.12);color:#4d5666}
-html[data-theme="light"] .warnbox,html[data-theme="paper"] .warnbox{color:#7a4f08;background:rgba(200,140,30,.10)}
-html[data-theme="light"] .infobox,html[data-theme="paper"] .infobox{color:#1f4f9a;background:rgba(37,96,196,.07)}
-html[data-theme="light"] .tag.link,html[data-theme="paper"] .tag.link{color:#1f54ad}
-html[data-theme="light"] .tag.stored,html[data-theme="paper"] .tag.stored{color:#136c41}
-html[data-theme="light"] .cw.sun,html[data-theme="light"] .cday.sun .dn,html[data-theme="paper"] .cw.sun,html[data-theme="paper"] .cday.sun .dn{color:#c43c3c}
-html[data-theme="light"] .cw.sat,html[data-theme="light"] .cday.sat .dn,html[data-theme="paper"] .cw.sat,html[data-theme="paper"] .cday.sat .dn{color:#2560c4}
-html[data-theme="light"] .mback,html[data-theme="paper"] .mback{background:rgba(30,30,40,.35)}
-html[data-theme="light"] .modal,html[data-theme="paper"] .modal{box-shadow:0 20px 50px rgba(0,0,0,.18)}
+html[data-theme="light"] .b-design,html[data-theme="sage"] .b-design{background:rgba(107,79,200,.12);color:#5a3fb5}
+html[data-theme="light"] .b-prep,html[data-theme="sage"] .b-prep{background:rgba(37,96,196,.12);color:#1f54ad}
+html[data-theme="light"] .b-make,html[data-theme="sage"] .b-make{background:rgba(10,122,117,.12);color:#086661}
+html[data-theme="light"] .b-fix,html[data-theme="sage"] .b-fix{background:rgba(180,120,20,.14);color:#83540a}
+html[data-theme="light"] .b-done,html[data-theme="sage"] .b-done{background:rgba(23,132,79,.12);color:#136c41}
+html[data-theme="light"] .b-hold,html[data-theme="sage"] .b-hold{background:rgba(196,60,60,.12);color:#a83232}
+html[data-theme="light"] .b-none,html[data-theme="sage"] .b-none{background:rgba(99,110,128,.12);color:#4d5666}
+html[data-theme="light"] .warnbox,html[data-theme="sage"] .warnbox{color:#7a4f08;background:rgba(200,140,30,.10)}
+html[data-theme="light"] .infobox,html[data-theme="sage"] .infobox{color:#1f4f9a;background:rgba(37,96,196,.07)}
+html[data-theme="light"] .tag.link,html[data-theme="sage"] .tag.link{color:#1f54ad}
+html[data-theme="light"] .tag.stored,html[data-theme="sage"] .tag.stored{color:#136c41}
+html[data-theme="light"] .cw.sun,html[data-theme="light"] .cday.sun .dn,html[data-theme="sage"] .cw.sun,html[data-theme="sage"] .cday.sun .dn{color:#c43c3c}
+html[data-theme="light"] .cw.sat,html[data-theme="light"] .cday.sat .dn,html[data-theme="sage"] .cw.sat,html[data-theme="sage"] .cday.sat .dn{color:#2560c4}
+html[data-theme="light"] .mback,html[data-theme="sage"] .mback{background:rgba(30,30,40,.35)}
+html[data-theme="light"] .modal,html[data-theme="sage"] .modal{box-shadow:0 20px 50px rgba(0,0,0,.18)}
 /* 밝은 테마에서는 달력 칸도 테마 색을 따름 */
-html[data-theme="light"] .panel.calpanel,html[data-theme="paper"] .panel.calpanel{--bg2:var(--bg2);background:var(--panel);border-color:var(--line)}
-html[data-theme="paper"] .panel.calpanel{--panel:#f9f5ec;--panel2:#f0e9dc;--line:#dcd2bf;--line2:#c9bca6;--tx:#2a251f;--tx2:#544b40;--tx3:#71665a;--ac:#a14f1c}
-html[data-theme="paper"] .calpanel .btn,html[data-theme="paper"] .calpanel .cal{background:#f9f5ec}
-html[data-theme="paper"] .calpanel .cday:hover{background:#f1e9da}
-html[data-theme="paper"] .calpanel .cday.out,html[data-theme="paper"] .calpanel .cday.out:hover{background:#efe8dc}
-html[data-theme="paper"] .calpanel .cev{background:color-mix(in srgb,var(--c) 14%,#f9f5ec)}
+html[data-theme="light"] .panel.calpanel,html[data-theme="sage"] .panel.calpanel{--bg2:var(--bg2);background:var(--panel);border-color:var(--line)}
+html[data-theme="sage"] .panel.calpanel{--panel:#f5f8f4;--panel2:#e8eee8;--line:#cdd7ce;--line2:#b7c4b9;--tx:#1c2a21;--tx2:#435347;--tx3:#5d6d61;--ac:#2b6e4c}
+html[data-theme="sage"] .calpanel .btn,html[data-theme="sage"] .calpanel .cal{background:#f5f8f4}
+html[data-theme="sage"] .calpanel .cday:hover{background:#eaf0ea}
+html[data-theme="sage"] .calpanel .cday.out,html[data-theme="sage"] .calpanel .cday.out:hover{background:#e9eee9}
+html[data-theme="sage"] .calpanel .cev{background:color-mix(in srgb,var(--c) 14%,#f5f8f4)}
 
 /* 글꼴 */
 html[data-font="round"]{--font:"NanumSquareRound","Pretendard Variable","Malgun Gothic",system-ui,sans-serif}
@@ -371,9 +381,9 @@ input[type=date]::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.85}
 
 /* 화면 설정 버튼 · 창 */
 .thbtn{position:relative}
-.thpop{position:absolute;right:0;top:calc(100% + 8px);z-index:60;width:300px;background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.28);padding:14px;display:grid;gap:10px;color:var(--tx);cursor:default;white-space:normal}
+.thpop{position:absolute;right:0;top:calc(100% + 8px);z-index:60;width:340px;background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.28);padding:14px;display:grid;gap:10px;color:var(--tx);cursor:default;white-space:normal}
 .thpop h4{margin:0;font-size:12px;color:var(--tx3);font-weight:600}
-.thopts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.thopts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.thopts.c4{grid-template-columns:repeat(4,1fr)}
 .thopt{border:2px solid var(--line2);border-radius:10px;padding:0;background:none;cursor:pointer;overflow:hidden;text-align:center;color:var(--tx)}
 .thopt.on{border-color:var(--ac);box-shadow:0 0 0 2px var(--acbg)}
 .thopt .sw{display:block;height:44px;position:relative}
